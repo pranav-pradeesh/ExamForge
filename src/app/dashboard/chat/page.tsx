@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { Send, Zap, RotateCcw, Sparkles, User } from 'lucide-react'
+import { Send, Zap, RotateCcw, Sparkles, User, FlaskConical, Calculator, Leaf } from 'lucide-react'
 import { SiriOrb } from '@/components/ui/siri-orb'
 
 interface Message {
