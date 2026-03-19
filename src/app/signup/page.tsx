@@ -166,7 +166,7 @@ export default function SignupPage() {
               loading={loading}
               disabled={!form.fullName || !form.email || !form.password}
               className="w-full py-3 text-sm"
-              awaitAnimation
+             
               successDuration={550}
               onClick={e => { e.preventDefault(); handleSignup(e as unknown as React.FormEvent) }}
             >
