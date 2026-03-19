@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen } from 'lucide-react'
-import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
+import { ParticleButton } from '@/components/ui/particle-button'
 
 const EXAMS = [
   {
@@ -84,10 +84,16 @@ export default function HomePage() {
 
           {/* CTA buttons */}
           <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 -mt-8 ${mounted ? 'animate-in stagger-3' : 'opacity-0'}`}>
-            <Link href="/signup" className="btn-primary flex items-center gap-2 px-8 py-4 text-base">
-              Start Free <ArrowRight size={16} />
+            <Link href="/signup">
+              <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={700}>
+                Start Free <ArrowRight size={15} />
+              </ParticleButton>
             </Link>
-            <Link href="/login" className="btn-ghost flex items-center gap-2 px-8 py-4 text-base">Sign In</Link>
+            <Link href="/login">
+              <ParticleButton variant="ghost" className="px-8 py-4 text-sm" successDuration={500}>
+                Sign In
+              </ParticleButton>
+            </Link>
           </div>
 
           {/* Stats bar */}
@@ -223,8 +229,10 @@ export default function HomePage() {
             style={{ background: 'linear-gradient(135deg, rgba(43,175,252,0.1) 0%, rgba(85,195,96,0.05) 100%)', border: '1px solid rgba(43,175,252,0.2)' }}>
             <h2 className="font-mono-display font-bold text-3xl mb-4" style={{ color: '#f4f9fd' }}>Ready to start forging?</h2>
             <p className="mb-8" style={{ color: 'rgba(244,249,253,0.6)' }}>Free account. Take your first mock test in 2 minutes.</p>
-            <Link href="/signup" className="btn-primary inline-flex items-center gap-2 px-8 py-4 text-base">
-              Create Free Account <ArrowRight size={16} />
+            <Link href="/signup" className="inline-block">
+              <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={700}>
+                Create Free Account <ArrowRight size={15} />
+              </ParticleButton>
             </Link>
           </div>
         </div>
