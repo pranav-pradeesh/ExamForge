@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Eye, EyeOff, ArrowLeft, CheckCircle, Info } from 'lucide-react'
+import { ParticleButton } from '@/components/ui/particle-button'
 
 const EXAMS = [
   { id: 'JEE', label: 'JEE Main / Advanced', desc: 'NITs, IIITs, IITs', color: '#2baffc', subjects: 'PCM' },
@@ -160,9 +161,16 @@ export default function SignupPage() {
               </div>
             )}
 
-            <button type="submit" className="btn-emerald w-full flex items-center justify-center gap-2 py-3" disabled={loading}>
-              {loading ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : 'Create Account — Free'}
-            </button>
+            <ParticleButton
+              variant="emerald"
+              loading={loading}
+              disabled={!form.fullName || !form.email || !form.password}
+              className="w-full py-3 text-sm"
+              onClick={e => { e.preventDefault(); handleSignup(e as unknown as React.FormEvent) }}
+              successDuration={600}
+            >
+              Create Account — Free
+            </ParticleButton>
           </form>
 
           <div className="mt-6 pt-6 border-t text-center text-sm" style={{ borderColor: '#1e1e24', color: 'rgba(244,249,253,0.5)' }}>
