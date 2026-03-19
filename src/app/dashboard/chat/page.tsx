@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Zap, RotateCcw, BookOpen, FlaskConical, Calculator, Leaf, Sparkles } from 'lucide-react'
+import { Send, Zap, RotateCcw, Sparkles, User } from 'lucide-react'
+import { SiriOrb } from '@/components/ui/siri-orb'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -220,13 +221,31 @@ What would you like to study today?`,
     <div className="flex flex-col h-[calc(100vh-3.5rem-3rem)]" style={{ minHeight: '500px' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <div>
-          <h1 className="font-mono-display font-bold text-xl" style={{ color: '#f4f9fd' }}>
-            AI Study Chat
-          </h1>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(244,249,253,0.4)' }}>
-            Powered by Llama 4 · Ask anything about JEE & VIT
-          </p>
+        <div className="flex items-center gap-4">
+          {/* SiriOrb — pulses when AI is streaming */}
+          <div className="relative flex-shrink-0">
+            <SiriOrb
+              size={52}
+              active={streaming}
+              speed={streaming ? 1.8 : 0.8}
+            />
+            {streaming && (
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center"
+                style={{ background: '#010101' }}>
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#55c360' }} />
+              </div>
+            )}
+          </div>
+          <div>
+            <h1 className="font-mono-display font-bold text-xl" style={{ color: '#f4f9fd' }}>
+              AI Study Chat
+            </h1>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(244,249,253,0.4)' }}>
+              {streaming
+                ? <span style={{ color: '#2baffc' }}>Thinking...</span>
+                : 'Powered by Llama 4 · Ask anything about JEE & VIT'}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs px-2 py-1 rounded-full flex items-center gap-1"
@@ -261,15 +280,20 @@ What would you like to study today?`,
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
             {/* Avatar */}
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'mt-0.5' : ''}`}
-              style={{
-                background: msg.role === 'assistant' ? 'linear-gradient(135deg, #2baffc20, #55c36020)' : 'rgba(43,175,252,0.2)',
-                border: `1px solid ${msg.role === 'assistant' ? 'rgba(43,175,252,0.2)' : 'rgba(43,175,252,0.3)'}`,
-              }}>
-              {msg.role === 'assistant'
-                ? <Sparkles size={14} style={{ color: '#2baffc' }} />
-                : <User size={14} style={{ color: '#2baffc' }} />}
-            </div>
+            {msg.role === 'assistant' ? (
+              <div className="flex-shrink-0 mt-0.5">
+                <SiriOrb
+                  size={32}
+                  active={streaming && i === messages.length - 1}
+                  speed={streaming && i === messages.length - 1 ? 2 : 0.7}
+                />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: 'rgba(43,175,252,0.2)', border: '1px solid rgba(43,175,252,0.3)' }}>
+                <User size={14} style={{ color: '#2baffc' }} />
+              </div>
+            )}
 
             {/* Bubble */}
             <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${msg.role === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
