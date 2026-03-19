@@ -1,7 +1,8 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, ChevronRight, Clock, BookOpen } from 'lucide-react'
+import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen } from 'lucide-react'
+import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
 
 const EXAMS = [
   {
@@ -59,36 +60,37 @@ export default function HomePage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+      <section className="relative pt-24 pb-12 px-6 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full"
-            style={{ background: 'radial-gradient(ellipse, rgba(43,175,252,0.1) 0%, transparent 70%)' }} />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full"
+            style={{ background: 'radial-gradient(ellipse, rgba(43,175,252,0.07) 0%, transparent 70%)' }} />
         </div>
+
         <div className="max-w-4xl mx-auto text-center relative">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border mb-8 text-xs font-mono-display ${mounted ? 'animate-in' : 'opacity-0'}`}
+          {/* Pill badge */}
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border mb-4 text-xs font-mono-display ${mounted ? 'animate-in' : 'opacity-0'}`}
             style={{ background: 'rgba(43,175,252,0.08)', borderColor: 'rgba(43,175,252,0.3)', color: '#2baffc' }}>
             <Zap size={12} />
             JEE · VITEEE · KEAM · CUSAT · NEET — All in one platform
           </div>
 
-          <h1 className={`font-mono-display font-bold leading-none mb-6 ${mounted ? 'animate-in stagger-1' : 'opacity-0'}`}
-            style={{ fontSize: 'clamp(2.8rem, 7vw, 5.5rem)', color: '#f4f9fd', letterSpacing: '-0.03em' }}>
-            Forge Your<br />
-            <span style={{ color: '#2baffc' }}>Exam</span> Rank.
-          </h1>
+          {/* Animated handwritten hero */}
+          <HandWrittenTitle
+            title="Forge Your Rank."
+            subtitle="Authentic CBT mock exams for JEE, VITEEE, KEAM, CUSAT & NEET with real PYQs. AI analysis pinpoints your weak zones after every test."
+            titleClassName="text-5xl md:text-7xl"
+            subtitleClassName="text-lg max-w-xl mx-auto leading-relaxed"
+          />
 
-          <p className={`text-lg mb-10 max-w-xl mx-auto leading-relaxed ${mounted ? 'animate-in stagger-2' : 'opacity-0'}`}
-            style={{ color: 'rgba(244,249,253,0.6)' }}>
-            Authentic CBT mock exams for JEE, VITEEE, KEAM, CUSAT & NEET with real PYQs. AI analysis pinpoints your weak zones after every test.
-          </p>
-
-          <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${mounted ? 'animate-in stagger-3' : 'opacity-0'}`}>
+          {/* CTA buttons */}
+          <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 -mt-8 ${mounted ? 'animate-in stagger-3' : 'opacity-0'}`}>
             <Link href="/signup" className="btn-primary flex items-center gap-2 px-8 py-4 text-base">
               Start Free <ArrowRight size={16} />
             </Link>
             <Link href="/login" className="btn-ghost flex items-center gap-2 px-8 py-4 text-base">Sign In</Link>
           </div>
 
+          {/* Stats bar */}
           <div className={`mt-14 grid grid-cols-3 gap-px rounded-xl overflow-hidden ${mounted ? 'animate-in stagger-4' : 'opacity-0'}`}
             style={{ border: '1px solid #1e1e24', background: '#1e1e24' }}>
             {[{ num: '5', label: 'Exams Covered' }, { num: '10K+', label: 'PYQs Loaded' }, { num: 'Free', label: 'AI Analysis' }].map(s => (
