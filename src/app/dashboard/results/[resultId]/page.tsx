@@ -4,10 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { scoreColor, formatTime, difficultyColor } from '@/lib/utils'
-import {
-  CheckCircle, XCircle, SkipForward, Clock, Brain, ChevronLeft,
-  ChevronDown, ChevronUp, Sparkles, RotateCcw
-} from 'lucide-react'
+import { CheckCircle, XCircle, SkipForward, Clock, Brain, ChevronLeft, ChevronDown, ChevronUp, Sparkles, RotateCcw } from 'lucide-react'
 
 interface FullSession {
   id: string
@@ -29,24 +26,35 @@ interface FullSession {
   mock_exams: { title: string }
 }
 
+interface QuestionData {
+  question_text: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  correct_option: string
+  explanation: string
+  topic: string
+  difficulty: string
+  subjects: { name: string }
+}
+
 interface Answer {
   id: string
   question_id: string
   selected_option: string | null
   is_correct: boolean | null
-  questions: {
-    question_text: string
-    option_a: string; option_b: string; option_c: string; option_d: string
-    correct_option: string
-    explanation: string
-    topic: string
-    difficulty: string
-    subjects: { name: string }
-  }
+  questions: QuestionData
 }
 
 const OPTS = ['A', 'B', 'C', 'D'] as const
-const OPT_KEYS = ['option_a', 'option_b', 'option_c', 'option_d'] as const
+
+function getOptionText(q: QuestionData, opt: typeof OPTS[number]): string {
+  const map: Record<typeof OPTS[number], string> = {
+    A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d,
+  }
+  return map[opt]
+}
 
 export default function ResultDetailPage() {
   const { resultId } = useParams() as { resultId: string }
@@ -62,39 +70,34 @@ export default function ResultDetailPage() {
   useEffect(() => {
     async function load() {
       const { data: sessionData } = await supabase
-        .from('test_sessions')
-        .select('*, mock_exams(title)')
-        .eq('id', resultId)
-        .single()
-
+        .from('test_sessions').select('*, mock_exams(title)').eq('id', resultId).single()
       if (!sessionData) { router.push('/dashboard/results'); return }
       setSession(sessionData as FullSession)
-
       const { data: ans } = await supabase
         .from('test_answers')
         .select('*, questions(question_text, option_a, option_b, option_c, option_d, correct_option, explanation, topic, difficulty, subjects(name))')
         .eq('session_id', resultId)
-
       setAnswers((ans as Answer[]) || [])
       setLoading(false)
     }
     load()
   }, [resultId, router])
 
-  async function getAiExplanation(answerId: string, questionText: string, correctOption: string, correctAnswer: string, explanation: string) {
+  async function getAiExplanation(answerId: string, q: QuestionData) {
     if (aiExplain[answerId]) { setExpanded(e => e === answerId ? null : answerId); return }
     setLoadingExplain(answerId)
     setExpanded(answerId)
     try {
+      const correctAnswer = getOptionText(q, q.correct_option as typeof OPTS[number])
       const res = await fetch('/api/ai/explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionText, correctOption, correctAnswer, explanation }),
+        body: JSON.stringify({ questionText: q.question_text, correctOption: q.correct_option, correctAnswer, explanation: q.explanation }),
       })
       const data = await res.json()
       setAiExplain(e => ({ ...e, [answerId]: data.explanation }))
     } catch {
-      setAiExplain(e => ({ ...e, [answerId]: explanation }))
+      setAiExplain(e => ({ ...e, [answerId]: q.explanation }))
     }
     setLoadingExplain(null)
   }
@@ -106,7 +109,6 @@ export default function ResultDetailPage() {
       </div>
     )
   }
-
   if (!session) return null
 
   const pct = Math.round(session.percentage)
@@ -114,8 +116,7 @@ export default function ResultDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Back */}
-      <Link href="/dashboard/results" className="inline-flex items-center gap-2 text-sm transition-colors animate-in"
+      <Link href="/dashboard/results" className="inline-flex items-center gap-2 text-sm animate-in"
         style={{ color: 'rgba(244,249,253,0.5)' }}
         onMouseEnter={e => (e.currentTarget.style.color = '#2baffc')}
         onMouseLeave={e => (e.currentTarget.style.color = 'rgba(244,249,253,0.5)')}>
@@ -132,11 +133,8 @@ export default function ResultDetailPage() {
               style={{ background: color + '15', border: `2px solid ${color}40` }}>
               <div className="font-mono-display font-bold text-2xl" style={{ color }}>{pct}%</div>
             </div>
-            <div className="text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
-              {session.total_score}/{session.max_score}
-            </div>
+            <div className="text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>{session.total_score}/{session.max_score}</div>
           </div>
-
           <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
               { label: 'Correct', val: session.correct_count, color: '#55c360', icon: <CheckCircle size={14} /> },
@@ -156,7 +154,6 @@ export default function ResultDetailPage() {
             ))}
           </div>
         </div>
-
         <div className="mt-4 flex items-center gap-3 text-xs" style={{ color: 'rgba(244,249,253,0.4)' }}>
           <Clock size={12} />
           Time used: {formatTime(session.time_taken_seconds || 0)}
@@ -180,14 +177,11 @@ export default function ResultDetailPage() {
             </div>
             {showAnalysis ? <ChevronUp size={16} style={{ color: '#2baffc' }} /> : <ChevronDown size={16} style={{ color: '#2baffc' }} />}
           </button>
-
           {showAnalysis && (
             <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(43,175,252,0.15)' }}>
-              <div className="prose prose-sm max-w-none text-sm leading-relaxed whitespace-pre-wrap"
-                style={{ color: 'rgba(244,249,253,0.8)' }}>
+              <div className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(244,249,253,0.8)' }}>
                 {session.ai_analysis}
               </div>
-
               {(session.ai_weak_topics?.length > 0 || session.ai_strong_topics?.length > 0) && (
                 <div className="mt-4 grid md:grid-cols-2 gap-4">
                   {session.ai_weak_topics?.length > 0 && (
@@ -195,8 +189,7 @@ export default function ResultDetailPage() {
                       <div className="text-xs font-mono-display mb-2" style={{ color: '#ff8080' }}>WEAK ZONES</div>
                       <div className="flex flex-wrap gap-2">
                         {session.ai_weak_topics.map(t => (
-                          <span key={t} className="text-xs px-2 py-1 rounded"
-                            style={{ background: 'rgba(255,107,107,0.1)', color: '#ff8080' }}>{t}</span>
+                          <span key={t} className="text-xs px-2 py-1 rounded" style={{ background: 'rgba(255,107,107,0.1)', color: '#ff8080' }}>{t}</span>
                         ))}
                       </div>
                     </div>
@@ -206,8 +199,7 @@ export default function ResultDetailPage() {
                       <div className="text-xs font-mono-display mb-2" style={{ color: '#55c360' }}>STRONG AREAS</div>
                       <div className="flex flex-wrap gap-2">
                         {session.ai_strong_topics.map(t => (
-                          <span key={t} className="text-xs px-2 py-1 rounded"
-                            style={{ background: 'rgba(85,195,96,0.1)', color: '#55c360' }}>{t}</span>
+                          <span key={t} className="text-xs px-2 py-1 rounded" style={{ background: 'rgba(85,195,96,0.1)', color: '#55c360' }}>{t}</span>
                         ))}
                       </div>
                     </div>
@@ -233,7 +225,7 @@ export default function ResultDetailPage() {
             const statusLabel = ans.is_correct === true ? 'Correct' : ans.is_correct === false ? 'Wrong' : 'Skipped'
 
             return (
-              <div key={ans.id} className="card transition-all" style={{ borderColor: statusColor + '30' }}>
+              <div key={ans.id} className="card" style={{ borderColor: statusColor + '30' }}>
                 <div className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-mono-display font-bold"
                     style={{ background: statusColor + '15', color: statusColor }}>
@@ -241,17 +233,14 @@ export default function ResultDetailPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-mono-display px-2 py-0.5 rounded"
-                        style={{ background: statusColor + '15', color: statusColor }}>{statusLabel}</span>
+                      <span className="text-xs font-mono-display px-2 py-0.5 rounded" style={{ background: statusColor + '15', color: statusColor }}>{statusLabel}</span>
                       {q.topic && <span className="text-xs" style={{ color: 'rgba(244,249,253,0.35)' }}>{q.topic}</span>}
                       <span className="text-xs" style={{ color: difficultyColor(q.difficulty) }}>{q.difficulty}</span>
                     </div>
                     <p className="text-sm mb-3 leading-relaxed" style={{ color: '#f4f9fd' }}>{q.question_text}</p>
-
-                    {/* Options */}
                     <div className="space-y-1.5 mb-3">
-                      {OPTS.map((opt, i) => {
-                        const optText = (q as unknown as Record<string, string>)[OPT_KEYS[i]]
+                      {OPTS.map(opt => {
+                        const optText = getOptionText(q, opt)
                         const isCorrect = opt === q.correct_option
                         const isSelected = opt === ans.selected_option
                         let bg = '#0a0a0b', border = '#1e1e24', textColor = 'rgba(244,249,253,0.55)'
@@ -268,19 +257,12 @@ export default function ResultDetailPage() {
                         )
                       })}
                     </div>
-
-                    {/* Explanation toggle */}
-                    <button
-                      onClick={() => getAiExplanation(ans.id, q.question_text, q.correct_option,
-                        (q as unknown as Record<string, string>)[`option_${q.correct_option.toLowerCase()}`],
-                        q.explanation)}
-                      className="flex items-center gap-2 text-xs transition-colors"
-                      style={{ color: '#2baffc' }}>
+                    <button onClick={() => getAiExplanation(ans.id, q)}
+                      className="flex items-center gap-2 text-xs" style={{ color: '#2baffc' }}>
                       <Brain size={12} />
                       {isExpanded ? 'Hide' : 'AI Explain'}
                       {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                     </button>
-
                     {isExpanded && (
                       <div className="mt-3 p-3 rounded-lg text-xs leading-relaxed"
                         style={{ background: 'rgba(43,175,252,0.06)', border: '1px solid rgba(43,175,252,0.15)', color: 'rgba(244,249,253,0.75)' }}>
@@ -289,9 +271,7 @@ export default function ResultDetailPage() {
                             <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
                             Generating explanation...
                           </div>
-                        ) : (
-                          aiExplain[ans.id] || q.explanation
-                        )}
+                        ) : (aiExplain[ans.id] || q.explanation)}
                       </div>
                     )}
                   </div>
@@ -302,7 +282,6 @@ export default function ResultDetailPage() {
         </div>
       </div>
 
-      {/* Retake */}
       <div className="flex justify-center pb-8">
         <Link href="/dashboard/exam" className="btn-primary flex items-center gap-2">
           <RotateCcw size={14} /> Take Another Test
