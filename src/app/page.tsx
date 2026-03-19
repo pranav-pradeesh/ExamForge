@@ -5,6 +5,7 @@ import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen
 import { ParticleButton } from '@/components/ui/particle-button'
 import { GlowCard } from '@/components/ui/spotlight-card'
 import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
+import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
 
 const EXAMS = [
   {
@@ -231,7 +232,7 @@ export default function HomePage() {
             <h2 className="font-mono-display font-bold text-3xl mb-4" style={{ color: '#f4f9fd' }}>Ready to start forging?</h2>
             <p className="mb-8" style={{ color: 'rgba(244,249,253,0.6)' }}>Free account. Take your first mock test in 2 minutes.</p>
             <Link href="/signup" className="inline-block">
-              <ParticleButton variant="primary" className="px-8 py-4 text-sm" awaitAnimation successDuration={1500}>
+              <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={550}>
                 Create Free Account <ArrowRight size={15} />
               </ParticleButton>
             </Link>
