@@ -1,145 +1,125 @@
-"use client";
+"use client"
 
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"
 
 interface HandWrittenTitleProps {
-  title?: string;
-  subtitle?: string;
-  titleClassName?: string;
-  subtitleClassName?: string;
+  title?: string
+  subtitle?: string
+  titleClassName?: string
+  subtitleClassName?: string
 }
 
 function HandWrittenTitle({
-  title = "Hand Written",
-  subtitle,
+  title = "Forge Your Rank.",
+  subtitle = "Authentic CBT mock exams powered by AI.",
   titleClassName = "",
   subtitleClassName = "",
 }: HandWrittenTitleProps) {
-  const drawMain = {
+  const draw = {
     hidden: { pathLength: 0, opacity: 0 },
     visible: {
       pathLength: 1,
       opacity: 1,
       transition: {
-        pathLength: { duration: 2.5, ease: [0.43, 0.13, 0.23, 0.96] as const },
-        opacity: { duration: 0.5 },
+        pathLength: { duration: 2.8, ease: [0.43, 0.13, 0.23, 0.96] as [number,number,number,number] },
+        opacity: { duration: 0.4 },
       },
     },
-  };
+  }
 
-  const drawSecond = {
+  const drawDelayed = {
     hidden: { pathLength: 0, opacity: 0 },
     visible: {
       pathLength: 1,
       opacity: 1,
       transition: {
-        pathLength: { duration: 3.2, delay: 0.4, ease: [0.43, 0.13, 0.23, 0.96] as const },
-        opacity: { duration: 0.5, delay: 0.4 },
+        pathLength: { duration: 2.4, ease: [0.43, 0.13, 0.23, 0.96] as [number,number,number,number], delay: 0.3 },
+        opacity: { duration: 0.4, delay: 0.3 },
       },
     },
-  };
-
-  const drawAccent = {
-    hidden: { pathLength: 0, opacity: 0 },
-    visible: {
-      pathLength: 1,
-      opacity: 1,
-      transition: {
-        pathLength: { duration: 2, delay: 0.8, ease: [0.43, 0.13, 0.23, 0.96] as const },
-        opacity: { duration: 0.5, delay: 0.8 },
-      },
-    },
-  };
+  }
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto py-16">
-      {/* Animated SVG rings drawn behind text */}
-      <div className="absolute inset-0 pointer-events-none select-none">
+    <div className="relative w-full max-w-4xl mx-auto py-14">
+      {/* Animated SVG loops */}
+      <div className="absolute inset-0 pointer-events-none">
         <motion.svg
           width="100%"
           height="100%"
-          viewBox="0 0 1200 400"
+          viewBox="0 0 1200 380"
           initial="hidden"
           animate="visible"
           className="w-full h-full"
-          aria-hidden="true"
         >
-          {/* Outer dodger-blue orbital */}
+          {/* Outer loop — dodger blue */}
           <motion.path
-            d="M 950 55 C 1210 175, 1060 345, 600 362 C 245 362, 95 308, 95 198 C 95 88, 298 38, 600 38 C 872 38, 952 118, 952 118"
+            d="M 920 55
+               C 1220 195, 1020 355, 600 375
+               C 230 375, 100 315, 100 195
+               C 100 75, 320 35, 600 35
+               C 880 35, 960 155, 920 155"
             fill="none"
-            strokeWidth="2"
+            strokeWidth="2.5"
             stroke="#2baffc"
             strokeLinecap="round"
             strokeLinejoin="round"
-            variants={drawMain}
-            style={{ opacity: 0.28 }}
+            variants={draw}
+            style={{ opacity: 0.3 }}
           />
-          {/* Inner emerald orbital */}
+          {/* Inner loop — emerald */}
           <motion.path
-            d="M 875 78 C 1095 198, 948 332, 600 347 C 288 347, 158 293, 158 198 C 158 103, 338 63, 600 63 C 818 63, 876 143, 876 143"
+            d="M 855 85
+               C 1095 215, 955 335, 600 350
+               C 290 350, 182 295, 192 195
+               C 202 95, 382 65, 600 65
+               C 818 65, 876 165, 855 165"
             fill="none"
             strokeWidth="1.5"
             stroke="#55c360"
             strokeLinecap="round"
             strokeLinejoin="round"
-            variants={drawSecond}
+            variants={drawDelayed}
             style={{ opacity: 0.18 }}
-          />
-          {/* Small accent dot trail */}
-          <motion.path
-            d="M 598 38 C 598 38, 602 42, 598 48"
-            fill="none"
-            strokeWidth="6"
-            stroke="#2baffc"
-            strokeLinecap="round"
-            variants={drawAccent}
-            style={{ opacity: 0.7 }}
-          />
-          <motion.path
-            d="M 598 362 C 598 362, 602 356, 598 350"
-            fill="none"
-            strokeWidth="6"
-            stroke="#55c360"
-            strokeLinecap="round"
-            variants={drawAccent}
-            style={{ opacity: 0.7 }}
           />
         </motion.svg>
       </div>
 
-      {/* Text content */}
+      {/* Content */}
       <div className="relative z-10 flex flex-col items-center justify-center gap-5 text-center">
         <motion.h1
-          className={`font-mono-display font-bold leading-none tracking-tight ${titleClassName}`}
-          style={{ color: '#f4f9fd' }}
-          initial={{ opacity: 0, y: 22 }}
+          className={`font-mono-display font-bold tracking-tight leading-none ${titleClassName}`}
+          style={{
+            color: '#f4f9fd',
+            fontSize: 'clamp(2.8rem, 7vw, 5.5rem)',
+            letterSpacing: '-0.03em',
+          }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ delay: 0.4, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          {/* "Forge Your" plain, "Rank." in dodger blue */}
           {title.includes('Rank') ? (
             <>
-              {title.replace(' Rank.', '')}{' '}
-              <span style={{ color: '#2baffc' }}>Rank.</span>
+              {title.split('Rank')[0]}
+              <span style={{ color: '#2baffc' }}>Rank</span>
+              {title.split('Rank')[1]}
             </>
           ) : title}
         </motion.h1>
 
         {subtitle && (
           <motion.p
-            className={subtitleClassName}
-            style={{ color: 'rgba(244,249,253,0.6)' }}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1, duration: 0.8 }}
+            className={`leading-relaxed ${subtitleClassName}`}
+            style={{ color: 'rgba(244,249,253,0.6)', maxWidth: '520px' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.0, duration: 0.9 }}
           >
             {subtitle}
           </motion.p>
         )}
       </div>
     </div>
-  );
+  )
 }
 
-export { HandWrittenTitle };
+export { HandWrittenTitle }
