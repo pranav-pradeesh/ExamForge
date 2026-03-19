@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { MousePointerClick } from "lucide-react"
@@ -12,6 +12,8 @@ interface ParticleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEleme
   variant?: "primary" | "emerald" | "ghost"
   loading?: boolean
   children: React.ReactNode
+  /** If true, the onClick fires AFTER the particle animation completes */
+  awaitAnimation?: boolean
 }
 
 function SuccessParticles({
@@ -27,40 +29,43 @@ function SuccessParticles({
   const centerX = rect.left + rect.width / 2
   const centerY = rect.top + rect.height / 2
 
-  const angles = [0, 60, 120, 180, 240, 300, 45, 135, 225, 315]
+  // 12 particles at even angles for a satisfying burst
+  const particles = Array.from({ length: 12 }, (_, i) => {
+    const angle = (i / 12) * 2 * Math.PI
+    const dist = 28 + Math.random() * 28
+    const size = i % 4 === 0 ? 6 : i % 3 === 0 ? 5 : 4
+    return { angle, dist, size, delay: i * 0.025 }
+  })
 
   return (
     <AnimatePresence>
-      {angles.map((angle, i) => {
-        const rad = (angle * Math.PI) / 180
-        const dist = Math.random() * 40 + 25
-        return (
-          <motion.div
-            key={i}
-            className="fixed rounded-full pointer-events-none z-[9999]"
-            style={{
-              left: centerX,
-              top: centerY,
-              width: i % 3 === 0 ? 6 : 4,
-              height: i % 3 === 0 ? 6 : 4,
-              background: color,
-              boxShadow: `0 0 6px ${color}`,
-            }}
-            initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
-            animate={{
-              scale: [0, 1.2, 0],
-              x: [0, Math.cos(rad) * dist],
-              y: [0, Math.sin(rad) * dist],
-              opacity: [1, 1, 0],
-            }}
-            transition={{
-              duration: 0.55,
-              delay: i * 0.03,
-              ease: "easeOut",
-            }}
-          />
-        )
-      })}
+      {particles.map((p, i) => (
+        <motion.div
+          key={i}
+          className="fixed rounded-full pointer-events-none"
+          style={{
+            left: centerX,
+            top: centerY,
+            width: p.size,
+            height: p.size,
+            background: color,
+            boxShadow: `0 0 ${p.size * 2}px ${color}`,
+            zIndex: 99999,
+          }}
+          initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
+          animate={{
+            scale: [0, 1.3, 0],
+            x: [0, Math.cos(p.angle) * p.dist],
+            y: [0, Math.sin(p.angle) * p.dist],
+            opacity: [1, 1, 0],
+          }}
+          transition={{
+            duration: 0.5,
+            delay: p.delay,
+            ease: [0.2, 0, 0.8, 1],
+          }}
+        />
+      ))}
     </AnimatePresence>
   )
 }
@@ -69,45 +74,64 @@ function ParticleButton({
   children,
   onClick,
   onSuccess,
-  successDuration = 800,
+  successDuration = 600,
   variant = "primary",
   loading = false,
+  awaitAnimation = true,
   className,
   disabled,
+  type = "button",
   ...props
 }: ParticleButtonProps) {
   const [showParticles, setShowParticles] = useState(false)
+  const [pressed, setPressed] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const animatingRef = useRef(false)
 
   const COLORS = {
     primary: "#2baffc",
     emerald: "#55c360",
-    ghost: "#f4f9fd",
+    ghost: "rgba(244,249,253,0.8)",
   }
 
-  const STYLES = {
-    primary: {
-      background: showParticles ? "#4dc4ff" : "#2baffc",
-      color: "#010101",
-    },
-    emerald: {
-      background: showParticles ? "#6dd978" : "#55c360",
-      color: "#010101",
-    },
+  const STYLES: Record<string, React.CSSProperties> = {
+    primary: { background: '#2baffc', color: '#010101' },
+    emerald: { background: '#55c360', color: '#010101' },
     ghost: {
-      background: "transparent",
-      color: showParticles ? "#2baffc" : "rgba(244,249,253,0.8)",
-      border: "1px solid #1e1e24",
+      background: 'transparent',
+      color: 'rgba(244,249,253,0.8)',
+      border: '1px solid #1e1e24',
     },
   }
 
-  async function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
-    if (disabled || loading || showParticles) return
+  const handleClick = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (disabled || loading || animatingRef.current) return
+    animatingRef.current = true
+
+    // Trigger visual burst
     setShowParticles(true)
-    onClick?.(e)
-    onSuccess?.()
-    setTimeout(() => setShowParticles(false), successDuration)
-  }
+    setPressed(true)
+
+    // Scale back up quickly
+    setTimeout(() => setPressed(false), 100)
+
+    if (awaitAnimation) {
+      // Wait for particles to finish THEN fire the action
+      await new Promise(res => setTimeout(res, successDuration))
+      setShowParticles(false)
+      animatingRef.current = false
+      onClick?.(e)
+      onSuccess?.()
+    } else {
+      // Fire immediately, animation plays in background
+      onClick?.(e)
+      onSuccess?.()
+      setTimeout(() => {
+        setShowParticles(false)
+        animatingRef.current = false
+      }, successDuration)
+    }
+  }, [disabled, loading, awaitAnimation, successDuration, onClick, onSuccess])
 
   const style = STYLES[variant]
 
@@ -118,12 +142,15 @@ function ParticleButton({
       )}
       <button
         ref={buttonRef}
+        type={type}
         onClick={handleClick}
         disabled={disabled || loading}
         className={cn(
-          "relative inline-flex items-center justify-center gap-2 font-mono-display font-bold uppercase tracking-wide rounded-lg transition-all duration-150 select-none",
+          "relative inline-flex items-center justify-center gap-2",
+          "font-mono-display font-bold uppercase tracking-wide",
+          "rounded-lg transition-all duration-150 select-none outline-none",
           "text-xs px-6 py-3",
-          showParticles && "scale-95",
+          pressed ? "scale-90" : showParticles ? "scale-95" : "scale-100",
           disabled || loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
           !disabled && !loading && variant !== "ghost" && "hover:-translate-y-0.5",
           !disabled && !loading && variant === "primary" && "hover:shadow-[0_8px_24px_rgba(43,175,252,0.35)]",
@@ -139,16 +166,18 @@ function ParticleButton({
         ) : (
           <>
             {children}
-            {showParticles && (
-              <motion.span
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <MousePointerClick size={13} />
-              </motion.span>
-            )}
+            <AnimatePresence>
+              {showParticles && (
+                <motion.span
+                  initial={{ scale: 0, opacity: 0, rotate: -20 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <MousePointerClick size={13} />
+                </motion.span>
+              )}
+            </AnimatePresence>
           </>
         )}
       </button>
