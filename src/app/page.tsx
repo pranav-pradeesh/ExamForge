@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen } from 'lucide-react'
 import { ParticleButton } from '@/components/ui/particle-button'
+import { GlowCard } from '@/components/ui/spotlight-card'
 
 const EXAMS = [
   {
@@ -74,16 +75,20 @@ export default function HomePage() {
             JEE · VITEEE · KEAM · CUSAT · NEET — All in one platform
           </div>
 
-          {/* Animated handwritten hero */}
-          <HandWrittenTitle
-            title="Forge Your Rank."
-            subtitle="Authentic CBT mock exams for JEE, VITEEE, KEAM, CUSAT & NEET with real PYQs. AI analysis pinpoints your weak zones after every test."
-            titleClassName="text-5xl md:text-7xl"
-            subtitleClassName="text-lg max-w-xl mx-auto leading-relaxed"
-          />
+          {/* Hero title */}
+          <h1 className={`font-mono-display font-bold leading-none mb-6 ${mounted ? 'animate-in stagger-1' : 'opacity-0'}`}
+            style={{ fontSize: 'clamp(2.8rem, 7vw, 5.5rem)', color: '#f4f9fd', letterSpacing: '-0.03em' }}>
+            Forge Your<br />
+            <span style={{ color: '#2baffc' }}>Exam</span> Rank.
+          </h1>
+
+          <p className={`text-lg mb-10 max-w-xl mx-auto leading-relaxed ${mounted ? 'animate-in stagger-2' : 'opacity-0'}`}
+            style={{ color: 'rgba(244,249,253,0.6)' }}>
+            Authentic CBT mock exams for JEE, VITEEE, KEAM, CUSAT &amp; NEET with real PYQs. AI analysis pinpoints your weak zones after every test.
+          </p>
 
           {/* CTA buttons */}
-          <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 -mt-8 ${mounted ? 'animate-in stagger-3' : 'opacity-0'}`}>
+          <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${mounted ? 'animate-in stagger-3' : 'opacity-0'}`}>
             <Link href="/signup">
               <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={700}>
                 Start Free <ArrowRight size={15} />
@@ -117,32 +122,32 @@ export default function HomePage() {
             <p style={{ color: 'rgba(244,249,253,0.5)' }}>Authentic patterns. Real PYQs. Correct marking schemes.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {EXAMS.map(exam => (
-              <div key={exam.code} className="card transition-all duration-200 group"
-                style={{ borderColor: '#1e1e24' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = exam.color + '40')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e1e24')}>
-                <div className="flex items-start justify-between mb-3">
-                  <span className="font-mono-display text-xs font-bold px-2 py-1 rounded"
-                    style={{ background: exam.color + '15', color: exam.color }}>{exam.code}</span>
-                  <span className="text-xs" style={{ color: 'rgba(244,249,253,0.35)' }}>{exam.body}</span>
-                </div>
-                <h3 className="font-semibold mb-1" style={{ color: '#f4f9fd' }}>{exam.name}</h3>
-                <p className="text-xs mb-3" style={{ color: exam.color }}>{exam.note}</p>
-                <div className="flex gap-3 mb-3 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
-                  <span className="flex items-center gap-1"><Clock size={11} />{exam.duration}</span>
-                  <span className="flex items-center gap-1"><BookOpen size={11} />{exam.questions} Qs</span>
-                  <span className="flex items-center gap-1"><Zap size={11} style={{ color: '#f59e0b' }} />{exam.pattern}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {exam.subjects.map(s => (
-                    <span key={s} className="text-xs px-2 py-0.5 rounded" style={{ background: '#1e1e24', color: 'rgba(244,249,253,0.5)' }}>{s}</span>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {/* Kerala B.Arch note */}
-            <div className="card" style={{ borderColor: '#1e1e24' }}>
+            {EXAMS.map(exam => {
+              const colorKey = exam.color === '#2baffc' ? 'blue' : exam.color === '#55c360' ? 'green' : exam.color === '#f59e0b' ? 'amber' : exam.color === '#a78bfa' ? 'purple' : 'pink'
+              return (
+                <GlowCard key={exam.code} glowColor={colorKey as 'blue'|'green'|'amber'|'purple'|'pink'} customSize className="p-6">
+                  <div className="flex items-start justify-between mb-3">
+                    <span className="font-mono-display text-xs font-bold px-2 py-1 rounded"
+                      style={{ background: exam.color + '15', color: exam.color }}>{exam.code}</span>
+                    <span className="text-xs" style={{ color: 'rgba(244,249,253,0.35)' }}>{exam.body}</span>
+                  </div>
+                  <h3 className="font-semibold mb-1" style={{ color: '#f4f9fd' }}>{exam.name}</h3>
+                  <p className="text-xs mb-3" style={{ color: exam.color }}>{exam.note}</p>
+                  <div className="flex gap-3 mb-3 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
+                    <span className="flex items-center gap-1"><Clock size={11} />{exam.duration}</span>
+                    <span className="flex items-center gap-1"><BookOpen size={11} />{exam.questions} Qs</span>
+                    <span className="flex items-center gap-1"><Zap size={11} style={{ color: '#f59e0b' }} />{exam.pattern}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {exam.subjects.map(s => (
+                      <span key={s} className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(244,249,253,0.5)' }}>{s}</span>
+                    ))}
+                  </div>
+                </GlowCard>
+              )
+            })}
+            {/* B.Arch card */}
+            <GlowCard glowColor="orange" customSize className="p-6">
               <div className="flex items-start justify-between mb-3">
                 <span className="font-mono-display text-xs font-bold px-2 py-1 rounded" style={{ background: 'rgba(251,146,60,0.15)', color: '#fb923c' }}>B.ARCH</span>
               </div>
@@ -151,7 +156,7 @@ export default function HomePage() {
               <p className="text-xs leading-relaxed" style={{ color: 'rgba(244,249,253,0.4)' }}>
                 Maths (CBT) + Aptitude 50Q (CBT) + Drawing (pen & paper). Coming soon.
               </p>
-            </div>
+            </GlowCard>
           </div>
         </div>
       </section>
@@ -170,17 +175,17 @@ export default function HomePage() {
               { icon: <Zap size={18} />, title: 'Custom Test Builder', desc: 'Filter by exam, subject, topic, and difficulty. Random question order every time.', color: '#f59e0b' },
               { icon: <BookOpen size={18} />, title: 'AI Notebook', desc: 'Paste any text → get structured notes, flashcards, key concepts, and practice MCQs.', color: '#55c360' },
               { icon: <CheckCircle size={18} />, title: 'AI Study Chat', desc: 'Your personal JEE & VIT tutor. Ask anything — step-by-step solutions with exam tips.', color: '#2baffc' },
-            ].map(f => (
-              <div key={f.title} className="card group hover:border-opacity-50 transition-all duration-300"
-                style={{ borderColor: '#1e1e24' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = f.color + '40')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e1e24')}>
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
-                  style={{ background: f.color + '15', color: f.color }}>{f.icon}</div>
-                <h3 className="font-semibold mb-2" style={{ color: '#f4f9fd' }}>{f.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: 'rgba(244,249,253,0.55)' }}>{f.desc}</p>
-              </div>
-            ))}
+            ].map(f => {
+              const colorKey = f.color === '#2baffc' ? 'blue' : f.color === '#55c360' ? 'green' : 'amber'
+              return (
+                <GlowCard key={f.title} glowColor={colorKey as 'blue'|'green'|'amber'} customSize className="p-6">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
+                    style={{ background: f.color + '15', color: f.color }}>{f.icon}</div>
+                  <h3 className="font-semibold mb-2" style={{ color: '#f4f9fd' }}>{f.title}</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: 'rgba(244,249,253,0.55)' }}>{f.desc}</p>
+                </GlowCard>
+              )
+            })}
           </div>
         </div>
       </section>
