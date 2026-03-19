@@ -99,7 +99,7 @@ export default function LoginPage() {
               loading={loading}
               disabled={!email || !password}
               className="w-full py-3 text-sm"
-              awaitAnimation
+             
               successDuration={550}
               onClick={e => { e.preventDefault(); handleParticleLogin() }}
             >
