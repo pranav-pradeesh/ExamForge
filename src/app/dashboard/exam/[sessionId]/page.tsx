@@ -338,7 +338,7 @@ export default function ExamEnginePage() {
                       {opt}
                     </div>
                     <span className="text-sm leading-relaxed pt-1" style={{ color: isSelected ? '#f4f9fd' : 'rgba(244,249,253,0.75)' }}>
-                      {(q as Record<string, unknown>)[optKey] as string}
+                      {(q as unknown as Record<string, string>)[optKey]}
                     </span>
                   </button>
                 )
