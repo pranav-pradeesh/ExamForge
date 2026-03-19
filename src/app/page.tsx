@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen } from 'lucide-react'
 import { ParticleButton } from '@/components/ui/particle-button'
 import { GlowCard } from '@/components/ui/spotlight-card'
+import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
+import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
 
 const EXAMS = [
   {
@@ -75,27 +77,22 @@ export default function HomePage() {
             JEE · VITEEE · KEAM · CUSAT · NEET — All in one platform
           </div>
 
-          {/* Hero title */}
-          <h1 className={`font-mono-display font-bold leading-none mb-6 ${mounted ? 'animate-in stagger-1' : 'opacity-0'}`}
-            style={{ fontSize: 'clamp(2.8rem, 7vw, 5.5rem)', color: '#f4f9fd', letterSpacing: '-0.03em' }}>
-            Forge Your<br />
-            <span style={{ color: '#2baffc' }}>Exam</span> Rank.
-          </h1>
-
-          <p className={`text-lg mb-10 max-w-xl mx-auto leading-relaxed ${mounted ? 'animate-in stagger-2' : 'opacity-0'}`}
-            style={{ color: 'rgba(244,249,253,0.6)' }}>
-            Authentic CBT mock exams for JEE, VITEEE, KEAM, CUSAT &amp; NEET with real PYQs. AI analysis pinpoints your weak zones after every test.
-          </p>
+          {/* Animated handwritten hero */}
+          <HandWrittenTitle
+            title="Forge Your Rank."
+            subtitle="Authentic CBT mock exams for JEE, VITEEE, KEAM, CUSAT & NEET with real PYQs. AI analysis pinpoints your weak zones after every test."
+            subtitleClassName="text-lg"
+          />
 
           {/* CTA buttons */}
           <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${mounted ? 'animate-in stagger-3' : 'opacity-0'}`}>
             <Link href="/signup">
-              <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={700}>
+              <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={1500}>
                 Start Free <ArrowRight size={15} />
               </ParticleButton>
             </Link>
             <Link href="/login">
-              <ParticleButton variant="ghost" className="px-8 py-4 text-sm" successDuration={500}>
+              <ParticleButton variant="ghost" className="px-8 py-4 text-sm" successDuration={1500}>
                 Sign In
               </ParticleButton>
             </Link>
@@ -235,7 +232,7 @@ export default function HomePage() {
             <h2 className="font-mono-display font-bold text-3xl mb-4" style={{ color: '#f4f9fd' }}>Ready to start forging?</h2>
             <p className="mb-8" style={{ color: 'rgba(244,249,253,0.6)' }}>Free account. Take your first mock test in 2 minutes.</p>
             <Link href="/signup" className="inline-block">
-              <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={700}>
+              <ParticleButton variant="primary" className="px-8 py-4 text-sm" awaitAnimation successDuration={1500}>
                 Create Free Account <ArrowRight size={15} />
               </ParticleButton>
             </Link>
