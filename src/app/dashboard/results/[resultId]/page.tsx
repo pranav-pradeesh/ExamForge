@@ -251,7 +251,7 @@ export default function ResultDetailPage() {
                     {/* Options */}
                     <div className="space-y-1.5 mb-3">
                       {OPTS.map((opt, i) => {
-                        const optText = (q as Record<string, unknown>)[OPT_KEYS[i]] as string
+                        const optText = (q as unknown as Record<string, string>)[OPT_KEYS[i]]
                         const isCorrect = opt === q.correct_option
                         const isSelected = opt === ans.selected_option
                         let bg = '#0a0a0b', border = '#1e1e24', textColor = 'rgba(244,249,253,0.55)'
@@ -272,7 +272,7 @@ export default function ResultDetailPage() {
                     {/* Explanation toggle */}
                     <button
                       onClick={() => getAiExplanation(ans.id, q.question_text, q.correct_option,
-                        (q as Record<string, unknown>)[`option_${q.correct_option.toLowerCase()}`] as string,
+                        (q as unknown as Record<string, string>)[`option_${q.correct_option.toLowerCase()}`],
                         q.explanation)}
                       className="flex items-center gap-2 text-xs transition-colors"
                       style={{ color: '#2baffc' }}>
