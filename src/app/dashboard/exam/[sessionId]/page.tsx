@@ -29,15 +29,22 @@ interface Session {
     title: string
     duration_minutes: number
     total_questions: number
-    marks_positive?: number
-    marks_negative?: number
   }
 }
 
 type AnswerState = Record<string, { selected: string | null; flagged: boolean; visited: boolean }>
 
 const OPTS = ['A', 'B', 'C', 'D'] as const
-const OPT_KEYS = ['option_a', 'option_b', 'option_c', 'option_d'] as const
+
+function getOptionText(q: Question, opt: typeof OPTS[number]): string {
+  const map: Record<typeof OPTS[number], string> = {
+    A: q.option_a,
+    B: q.option_b,
+    C: q.option_c,
+    D: q.option_d,
+  }
+  return map[opt]
+}
 
 export default function ExamEnginePage() {
   const router = useRouter()
@@ -52,6 +59,11 @@ export default function ExamEnginePage() {
   const [showPalette, setShowPalette] = useState(true)
   const [submitted, setSubmitted] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const stateRef = useRef({ questions, answers, session, timeLeft, submitting, submitted, sessionId })
+
+  useEffect(() => {
+    stateRef.current = { questions, answers, session, timeLeft, submitting, submitted, sessionId }
+  })
 
   useEffect(() => {
     async function load() {
@@ -66,25 +78,24 @@ export default function ExamEnginePage() {
 
       setSession(sessionData as Session)
 
-      // Fetch questions for this exam
       const { data: mqData } = await supabase
         .from('mock_exam_questions')
-        .select('question_id, question_order, section_name')
+        .select('question_id, question_order')
         .eq('mock_exam_id', sessionData.mock_exam_id)
         .order('question_order')
 
       if (mqData && mqData.length > 0) {
-        const questionIds = mqData.map(m => m.question_id)
+        const questionIds = mqData.map((m: { question_id: string }) => m.question_id)
         const { data: qData } = await supabase
           .from('questions')
           .select('*, subjects(name, code)')
           .in('id', questionIds)
 
         if (qData) {
-          // Sort by question_order
-          const ordered = mqData.map(m => qData.find(q => q.id === m.question_id)).filter(Boolean) as Question[]
+          const ordered = mqData
+            .map((m: { question_id: string }) => qData.find((q: { id: string }) => q.id === m.question_id))
+            .filter((q): q is Question => q !== undefined)
           setQuestions(ordered)
-
           const initialAnswers: AnswerState = {}
           ordered.forEach(q => {
             initialAnswers[q.id] = { selected: null, flagged: false, visited: false }
@@ -99,7 +110,6 @@ export default function ExamEnginePage() {
     load()
   }, [sessionId, router])
 
-  // Timer
   useEffect(() => {
     if (timeLeft <= 0 || submitted) return
     timerRef.current = setInterval(() => {
@@ -116,7 +126,6 @@ export default function ExamEnginePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted, timeLeft === 0])
 
-  // Mark current question as visited
   useEffect(() => {
     if (!questions[current]) return
     const qId = questions[current].id
@@ -126,7 +135,7 @@ export default function ExamEnginePage() {
   function selectAnswer(qId: string, opt: string) {
     setAnswers(a => ({
       ...a,
-      [qId]: { ...(a[qId] || { selected: null, flagged: false, visited: true }), selected: opt },
+      [qId]: { ...(a[qId] || { selected: null, flagged: false, visited: true }), selected: opt || null },
     }))
   }
 
@@ -138,6 +147,7 @@ export default function ExamEnginePage() {
   }
 
   const handleSubmit = useCallback(async () => {
+    const { submitting, submitted, questions, answers, session, timeLeft, sessionId } = stateRef.current
     if (submitting || submitted) return
     setSubmitting(true)
     clearInterval(timerRef.current!)
@@ -177,19 +187,17 @@ export default function ExamEnginePage() {
       }
     })
 
-    const totalScore = Math.max(0, correct * 4 - wrong * 1)
+    const totalScore = Math.max(0, correct * 4 - wrong)
     const maxScore = session?.max_score || 300
     const percentage = Math.round((totalScore / maxScore) * 100 * 10) / 10
     const timeUsed = (session?.mock_exams?.duration_minutes || 180) * 60 - timeLeft
 
-    // Insert answers
+    const weakTopicsUniq = Array.from(new Set(wrongTopics)).slice(0, 8)
+    const strongTopicsUniq = Array.from(new Set(correctTopics)).slice(0, 5)
+
     await supabase.from('test_answers').insert(answerInserts)
 
-    // Get AI analysis
     let aiAnalysis = null
-    let weakTopicsUniq = [...new Set(wrongTopics)].slice(0, 8)
-    let strongTopicsUniq = [...new Set(correctTopics)].slice(0, 5)
-
     try {
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
@@ -210,7 +218,6 @@ export default function ExamEnginePage() {
       console.error('AI analysis failed', e)
     }
 
-    // Update session
     await supabase.from('test_sessions').update({
       status: 'completed',
       completed_at: new Date().toISOString(),
@@ -231,11 +238,11 @@ export default function ExamEnginePage() {
     setSubmitted(true)
     router.push(`/dashboard/results/${sessionId}`)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submitting, submitted])
+  }, [])
 
   if (!session || questions.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-screen" style={{ background: '#010101' }}>
         <div className="text-center">
           <div className="w-8 h-8 border-2 rounded-full animate-spin mx-auto mb-3"
             style={{ borderColor: '#2baffc', borderTopColor: 'transparent' }} />
@@ -260,32 +267,29 @@ export default function ExamEnginePage() {
     return 'unvisited'
   }
 
-  const statusStyle = (status: string) => ({
-    answered: { bg: '#55c360', color: '#010101' },
-    flagged: { bg: '#f59e0b', color: '#010101' },
-    visited: { bg: '#1e1e24', color: 'rgba(244,249,253,0.6)' },
-    unvisited: { bg: '#0a0a0b', color: 'rgba(244,249,253,0.3)' },
-  })[status] || { bg: '#0a0a0b', color: 'rgba(244,249,253,0.3)' }
+  function statusStyle(status: string) {
+    const map: Record<string, { bg: string; color: string }> = {
+      answered: { bg: '#55c360', color: '#010101' },
+      flagged: { bg: '#f59e0b', color: '#010101' },
+      visited: { bg: '#1e1e24', color: 'rgba(244,249,253,0.6)' },
+      unvisited: { bg: '#0a0a0b', color: 'rgba(244,249,253,0.3)' },
+    }
+    return map[status] || map.unvisited
+  }
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col" style={{ background: '#010101' }}>
-      {/* Exam header */}
+    <div className="h-screen flex flex-col" style={{ background: '#010101' }}>
+      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
         style={{ background: '#0a0a0b', borderBottom: '1px solid #1e1e24' }}>
-        <div className="flex items-center gap-3">
-          <span className="font-mono-display text-xs font-bold" style={{ color: '#f4f9fd' }}>
-            {session.mock_exams?.title?.slice(0, 40) || 'Mock Test'}
-          </span>
-        </div>
-
-        {/* Stats */}
+        <span className="font-mono-display text-xs font-bold" style={{ color: '#f4f9fd' }}>
+          {session.mock_exams?.title?.slice(0, 40) || 'Mock Test'}
+        </span>
         <div className="flex items-center gap-4 text-xs">
           <span style={{ color: '#55c360' }}>✓ {attempted}</span>
           <span style={{ color: '#f59e0b' }}>⚑ {flagged}</span>
-          <span style={{ color: 'rgba(244,249,253,0.4)' }}>↷ {questions.length - attempted - flagged}</span>
+          <span style={{ color: 'rgba(244,249,253,0.4)' }}>↷ {questions.length - attempted}</span>
         </div>
-
-        {/* Timer */}
         <div className="font-mono-display font-bold text-lg" style={{ color: timerColor }}>
           {formatTime(timeLeft)}
         </div>
@@ -294,34 +298,25 @@ export default function ExamEnginePage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Question area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Subject tag */}
           <div className="px-6 pt-5 pb-3 flex items-center gap-3 flex-shrink-0">
-            <span className="font-mono-display text-xs px-2 py-1 rounded"
-              style={{ background: '#1e1e24', color: 'rgba(244,249,253,0.5)' }}>
+            <span className="font-mono-display text-xs px-2 py-1 rounded" style={{ background: '#1e1e24', color: 'rgba(244,249,253,0.5)' }}>
               Q{current + 1}/{questions.length}
             </span>
-            <span className="font-mono-display text-xs px-2 py-1 rounded"
-              style={{ background: 'rgba(43,175,252,0.1)', color: '#2baffc' }}>
+            <span className="font-mono-display text-xs px-2 py-1 rounded" style={{ background: 'rgba(43,175,252,0.1)', color: '#2baffc' }}>
               {q.subjects?.name || 'General'}
             </span>
-            {q.topic && (
-              <span className="text-xs" style={{ color: 'rgba(244,249,253,0.3)' }}>{q.topic}</span>
-            )}
+            {q.topic && <span className="text-xs" style={{ color: 'rgba(244,249,253,0.3)' }}>{q.topic}</span>}
           </div>
 
-          {/* Question text */}
-          <div className="px-6 pb-4 flex-shrink-0 overflow-auto max-h-40">
-            <p className="text-base leading-relaxed" style={{ color: '#f4f9fd' }}>
-              {q.question_text}
-            </p>
+          <div className="px-6 pb-4 flex-shrink-0">
+            <p className="text-base leading-relaxed" style={{ color: '#f4f9fd' }}>{q.question_text}</p>
           </div>
 
-          {/* Options */}
           <div className="px-6 flex-1 overflow-auto">
             <div className="space-y-3 pb-4">
-              {OPTS.map((opt, i) => {
-                const optKey = OPT_KEYS[i]
+              {OPTS.map(opt => {
                 const isSelected = qAns.selected === opt
+                const optText = getOptionText(q, opt)
                 return (
                   <button key={opt}
                     onClick={() => selectAnswer(q.id, opt)}
@@ -331,14 +326,11 @@ export default function ExamEnginePage() {
                       border: `1px solid ${isSelected ? '#2baffc' : '#1e1e24'}`,
                     }}>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-mono-display text-xs font-bold"
-                      style={{
-                        background: isSelected ? '#2baffc' : '#1e1e24',
-                        color: isSelected ? '#010101' : 'rgba(244,249,253,0.6)',
-                      }}>
+                      style={{ background: isSelected ? '#2baffc' : '#1e1e24', color: isSelected ? '#010101' : 'rgba(244,249,253,0.6)' }}>
                       {opt}
                     </div>
                     <span className="text-sm leading-relaxed pt-1" style={{ color: isSelected ? '#f4f9fd' : 'rgba(244,249,253,0.75)' }}>
-                      {(q as unknown as Record<string, string>)[optKey]}
+                      {optText}
                     </span>
                   </button>
                 )
@@ -347,11 +339,9 @@ export default function ExamEnginePage() {
           </div>
 
           {/* Nav controls */}
-          <div className="px-6 py-4 flex items-center justify-between flex-shrink-0"
-            style={{ borderTop: '1px solid #1e1e24' }}>
+          <div className="px-6 py-4 flex items-center justify-between flex-shrink-0" style={{ borderTop: '1px solid #1e1e24' }}>
             <div className="flex gap-2">
-              <button onClick={() => setCurrent(c => Math.max(0, c - 1))}
-                disabled={current === 0}
+              <button onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}
                 className="btn-ghost flex items-center gap-2 py-2 px-3 text-xs disabled:opacity-30">
                 <ChevronLeft size={14} /> Prev
               </button>
@@ -366,23 +356,20 @@ export default function ExamEnginePage() {
                 {qAns.flagged ? 'Flagged' : 'Flag'}
               </button>
             </div>
-
             <div className="flex gap-2">
               {qAns.selected && (
                 <button onClick={() => selectAnswer(q.id, '')}
-                  className="py-2 px-3 rounded-lg text-xs transition-all"
+                  className="py-2 px-3 rounded-lg text-xs"
                   style={{ background: 'rgba(255,107,107,0.1)', color: '#ff8080', border: '1px solid rgba(255,107,107,0.2)' }}>
                   Clear
                 </button>
               )}
               {current < questions.length - 1 ? (
-                <button onClick={() => setCurrent(c => Math.min(questions.length - 1, c + 1))}
-                  className="btn-primary flex items-center gap-2 py-2 px-4 text-xs">
+                <button onClick={() => setCurrent(c => Math.min(questions.length - 1, c + 1))} className="btn-primary flex items-center gap-2 py-2 px-4 text-xs">
                   Next <ChevronRight size={14} />
                 </button>
               ) : (
-                <button onClick={handleSubmit} disabled={submitting}
-                  className="btn-emerald flex items-center gap-2 py-2 px-4 text-xs">
+                <button onClick={handleSubmit} disabled={submitting} className="btn-emerald flex items-center gap-2 py-2 px-4 text-xs">
                   {submitting ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Send size={14} />}
                   Submit
                 </button>
@@ -391,15 +378,13 @@ export default function ExamEnginePage() {
           </div>
         </div>
 
-        {/* Question Palette (glassmorphism) */}
+        {/* Question Palette */}
         <div className={`transition-all duration-300 overflow-hidden flex-shrink-0 ${showPalette ? 'w-64' : 'w-0'}`}
           style={{ borderLeft: showPalette ? '1px solid #1e1e24' : 'none' }}>
           <div className="h-full flex flex-col" style={{ background: 'rgba(17,17,20,0.7)', backdropFilter: 'blur(12px)' }}>
-            <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid #1e1e24' }}>
+            <div className="p-4" style={{ borderBottom: '1px solid #1e1e24' }}>
               <span className="font-mono-display text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>QUESTION PALETTE</span>
             </div>
-
-            {/* Legend */}
             <div className="px-4 py-3 space-y-1.5" style={{ borderBottom: '1px solid #1e1e24' }}>
               {[
                 { label: 'Answered', color: '#55c360' },
@@ -413,16 +398,13 @@ export default function ExamEnginePage() {
                 </div>
               ))}
             </div>
-
-            {/* Grid */}
             <div className="flex-1 p-4 overflow-auto">
               <div className="grid grid-cols-5 gap-1.5">
                 {questions.map((question, idx) => {
                   const status = qStatus(question.id)
                   const style = statusStyle(status)
                   return (
-                    <button key={question.id}
-                      onClick={() => setCurrent(idx)}
+                    <button key={question.id} onClick={() => setCurrent(idx)}
                       className="w-9 h-9 rounded-lg font-mono-display text-xs font-bold transition-all"
                       style={{
                         background: current === idx ? '#2baffc' : style.bg,
@@ -435,8 +417,6 @@ export default function ExamEnginePage() {
                 })}
               </div>
             </div>
-
-            {/* Submit */}
             <div className="p-4" style={{ borderTop: '1px solid #1e1e24' }}>
               <div className="text-xs mb-3 text-center" style={{ color: 'rgba(244,249,253,0.4)' }}>
                 {attempted}/{questions.length} attempted
@@ -450,12 +430,11 @@ export default function ExamEnginePage() {
           </div>
         </div>
 
-        {/* Toggle palette button */}
         <button onClick={() => setShowPalette(s => !s)}
-          className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-12 flex items-center justify-center rounded-l-md"
+          className="fixed top-1/2 -translate-y-1/2 w-5 h-12 flex items-center justify-center rounded-l-md z-10 transition-all duration-300"
           style={{
             background: '#1e1e24', color: 'rgba(244,249,253,0.5)',
-            right: showPalette ? '256px' : '0px', position: 'fixed', transition: 'right 0.3s',
+            right: showPalette ? '256px' : '0px',
           }}>
           {showPalette ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
