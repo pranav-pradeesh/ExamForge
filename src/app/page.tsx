@@ -5,7 +5,6 @@ import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen
 import { ParticleButton } from '@/components/ui/particle-button'
 import { GlowCard } from '@/components/ui/spotlight-card'
 import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
-import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
 
 const EXAMS = [
   {
