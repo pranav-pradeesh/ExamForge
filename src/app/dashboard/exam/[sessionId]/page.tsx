@@ -1,281 +1,461 @@
 'use client'
-import { useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Play, Clock, BookOpen, Zap, Filter, ChevronRight, Shuffle } from 'lucide-react'
+import { formatTime } from '@/lib/utils'
+import { Flag, ChevronLeft, ChevronRight, Send, BookmarkPlus, Bookmark } from 'lucide-react'
 
-interface MockExam {
-  id: string; title: string; exam_type: string
-  duration_minutes: number; total_questions: number; total_marks: number; instructions: string
+interface Question {
+  id: string
+  question_text: string
+  has_math: boolean
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  correct_option: string
+  explanation: string
+  topic: string
+  difficulty: string
+  subject_id: string
+  subjects: { name: string; code: string }
 }
-interface Subject { id: string; name: string; code: string; exam_type: string; color: string; icon: string }
 
-function ExamPageInner() {
-  const router = useRouter()
-  const params = useSearchParams()
-  const [exams, setExams] = useState<MockExam[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [topics, setTopics] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [starting, setStarting] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'ALL' | 'JEE' | 'VIT'>((params.get('type') as 'JEE' | 'VIT') || 'ALL')
-
-  // Custom test builder
-  const [showBuilder, setShowBuilder] = useState(false)
-  const [builder, setBuilder] = useState({
-    examType: 'JEE', subjectCode: '', topic: '', difficulty: '',
-    numQuestions: 30, duration: 60,
-  })
-  const [buildStarting, setBuildStarting] = useState(false)
-  const [buildError, setBuildError] = useState('')
-
-  useEffect(() => {
-    async function load() {
-      const [{ data: e }, { data: s }] = await Promise.all([
-        supabase.from('mock_exams').select('*').eq('is_active', true).order('created_at', { ascending: false }),
-        supabase.from('subjects').select('*').order('name'),
-      ])
-      setExams(e || [])
-      setSubjects(s || [])
-      setLoading(false)
-    }
-    load()
-  }, [])
-
-  // Load topics when subject changes
-  useEffect(() => {
-    async function loadTopics() {
-      if (!builder.subjectCode) { setTopics([]); return }
-      const subj = subjects.find(s => s.code === builder.subjectCode)
-      if (!subj) return
-      const { data } = await supabase
-        .from('questions')
-        .select('topic')
-        .eq('subject_id', subj.id)
-        .eq('is_active', true)
-        .neq('topic', '')
-      const unique = [...new Set((data || []).map((q: { topic: string }) => q.topic).filter(Boolean))].sort()
-      setTopics(unique)
-    }
-    loadTopics()
-  }, [builder.subjectCode, subjects])
-
-  async function startExam(examId: string) {
-    setStarting(examId)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-    const exam = exams.find(e => e.id === examId)!
-    const { data: session, error } = await supabase.from('test_sessions').insert({
-      user_id: user.id, mock_exam_id: examId, exam_type: exam.exam_type,
-      status: 'in_progress', max_score: exam.total_marks,
-    }).select().single()
-    if (error || !session) { setStarting(null); return }
-    router.push(`/dashboard/exam/${session.id}`)
+interface Session {
+  id: string
+  exam_type: string
+  max_score: number
+  mock_exam_id: string
+  mock_exams: {
+    title: string
+    duration_minutes: number
+    total_questions: number
   }
+}
 
-  async function startCustomTest() {
-    setBuildStarting(true); setBuildError('')
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
+type AnswerState = Record<string, { selected: string | null; flagged: boolean; visited: boolean }>
 
-    // Get random questions with filters
-    const subjectCodes = builder.subjectCode ? [builder.subjectCode] : null
-    const res = await fetch('/api/exam/questions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        examType: builder.examType,
-        subjectCodes,
-        topic: builder.topic || null,
-        difficulty: builder.difficulty || null,
-        limit: builder.numQuestions,
-      }),
-    })
-    const { questions } = await res.json()
-    if (!questions || questions.length === 0) {
-      setBuildError('No questions found for these filters. Try different options.')
-      setBuildStarting(false); return
-    }
+const OPTS = ['A', 'B', 'C', 'D'] as const
 
-    // Create a dynamic mock exam
-    const subj = subjects.find(s => s.code === builder.subjectCode)
-    const title = `${builder.examType} ${subj ? subj.name : 'Mixed'} ${builder.topic ? `· ${builder.topic}` : ''} ${builder.difficulty ? `· ${builder.difficulty}` : ''}`.trim()
-
-    const { data: mockExam } = await supabase.from('mock_exams').insert({
-      title, exam_type: builder.examType,
-      duration_minutes: builder.duration,
-      total_questions: questions.length,
-      total_marks: questions.length * 4,
-      is_active: true,
-      created_by: 'student',
-    }).select().single()
-
-    if (!mockExam) { setBuildError('Failed to create test'); setBuildStarting(false); return }
-
-    // Insert questions in random order
-    const mqInserts = questions.map((q: { id: string }, idx: number) => ({
-      mock_exam_id: mockExam.id,
-      question_id: q.id,
-      question_order: idx + 1,
-    }))
-    await supabase.from('mock_exam_questions').insert(mqInserts)
-
-    // Create session
-    const { data: session } = await supabase.from('test_sessions').insert({
-      user_id: user.id, mock_exam_id: mockExam.id,
-      exam_type: builder.examType, status: 'in_progress',
-      max_score: questions.length * 4,
-    }).select().single()
-
-    if (session) router.push(`/dashboard/exam/${session.id}`)
-    else { setBuildError('Failed to start test'); setBuildStarting(false) }
+function getOptionText(q: Question, opt: typeof OPTS[number]): string {
+  const map: Record<typeof OPTS[number], string> = {
+    A: q.option_a,
+    B: q.option_b,
+    C: q.option_c,
+    D: q.option_d,
   }
+  return map[opt]
+}
 
-  const filtered = filter === 'ALL' ? exams : exams.filter(e => e.exam_type === filter)
-  const builderSubjects = subjects.filter(s => s.exam_type === builder.examType)
-
+function MathText({ text }: { text: string }) {
+  const parts = text.split(/(\$[^$]+\$)/g)
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="animate-in">
-        <h1 className="font-mono-display font-bold text-2xl mb-1" style={{ color: '#f4f9fd' }}>Mock Tests</h1>
-        <p className="text-sm" style={{ color: 'rgba(244,249,253,0.5)' }}>Full CBT simulation · random question order · AI analysis after each test</p>
-      </div>
-
-      {/* Filter row */}
-      <div className="flex items-center gap-3 flex-wrap animate-in stagger-1">
-        {(['ALL', 'JEE', 'VIT'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className="px-4 py-2 rounded-lg font-mono-display text-xs font-bold transition-all"
-            style={{ background: filter === f ? '#2baffc' : '#111114', color: filter === f ? '#010101' : 'rgba(244,249,253,0.5)', border: `1px solid ${filter === f ? '#2baffc' : '#1e1e24'}` }}>
-            {f}
-          </button>
-        ))}
-        <button onClick={() => setShowBuilder(!showBuilder)}
-          className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono-display font-bold transition-all"
-          style={{ background: showBuilder ? 'rgba(85,195,96,0.15)' : '#111114', color: showBuilder ? '#55c360' : 'rgba(244,249,253,0.6)', border: `1px solid ${showBuilder ? 'rgba(85,195,96,0.4)' : '#1e1e24'}` }}>
-          <Shuffle size={12} />
-          Custom Test Builder
-        </button>
-      </div>
-
-      {/* Custom test builder */}
-      {showBuilder && (
-        <div className="card animate-in" style={{ borderColor: 'rgba(85,195,96,0.3)' }}>
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(85,195,96,0.15)', color: '#55c360' }}>
-              <Filter size={14} />
-            </div>
-            <div>
-              <div className="font-mono-display font-bold text-sm" style={{ color: '#55c360' }}>Custom Test Builder</div>
-              <div className="text-xs" style={{ color: 'rgba(244,249,253,0.4)' }}>Questions are randomly selected and shuffled</div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>EXAM</label>
-              <select className="input-field text-sm" value={builder.examType}
-                onChange={e => setBuilder(b => ({ ...b, examType: e.target.value, subjectCode: '', topic: '' }))}>
-                <option>JEE</option><option>VIT</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>SUBJECT</label>
-              <select className="input-field text-sm" value={builder.subjectCode}
-                onChange={e => setBuilder(b => ({ ...b, subjectCode: e.target.value, topic: '' }))}>
-                <option value="">All Subjects (Mixed)</option>
-                {builderSubjects.map(s => <option key={s.id} value={s.code}>{s.icon} {s.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>TOPIC</label>
-              <select className="input-field text-sm" value={builder.topic} onChange={e => setBuilder(b => ({ ...b, topic: e.target.value }))}
-                disabled={!builder.subjectCode || topics.length === 0}>
-                <option value="">All Topics</option>
-                {topics.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>DIFFICULTY</label>
-              <select className="input-field text-sm" value={builder.difficulty} onChange={e => setBuilder(b => ({ ...b, difficulty: e.target.value }))}>
-                <option value="">Mixed (All Levels)</option>
-                <option value="easy">Easy only</option>
-                <option value="medium">Medium only</option>
-                <option value="hard">Hard only</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>NO. OF QUESTIONS</label>
-              <select className="input-field text-sm" value={builder.numQuestions} onChange={e => setBuilder(b => ({ ...b, numQuestions: parseInt(e.target.value) }))}>
-                {[10, 15, 20, 30, 45, 60, 90].map(n => <option key={n} value={n}>{n} questions</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>DURATION</label>
-              <select className="input-field text-sm" value={builder.duration} onChange={e => setBuilder(b => ({ ...b, duration: parseInt(e.target.value) }))}>
-                {[15, 30, 45, 60, 90, 120, 180].map(n => <option key={n} value={n}>{n} minutes</option>)}
-              </select>
-            </div>
-          </div>
-
-          {buildError && <div className="mb-3 px-3 py-2 rounded text-xs" style={{ background: 'rgba(255,107,107,0.1)', color: '#ff8080', border: '1px solid rgba(255,107,107,0.2)' }}>{buildError}</div>}
-
-          <button onClick={startCustomTest} disabled={buildStarting}
-            className="btn-emerald flex items-center gap-2 py-3 px-6">
-            {buildStarting ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <><Shuffle size={14} /> Start Custom Test</>}
-          </button>
-        </div>
-      )}
-
-      {/* Preset exams */}
-      {loading ? (
-        <div className="grid md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map(i => <div key={i} className="card h-48 animate-pulse" style={{ borderColor: '#1e1e24' }} />)}
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-4 animate-in stagger-2">
-          {filtered.map(exam => {
-            const color = exam.exam_type === 'JEE' ? '#2baffc' : '#55c360'
-            return (
-              <div key={exam.id} className="card group transition-all duration-200"
-                style={{ borderColor: '#1e1e24' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = color + '40')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e1e24')}>
-                <div className="flex items-start justify-between mb-4">
-                  <span className="font-mono-display text-xs font-bold px-2 py-1 rounded"
-                    style={{ background: color + '15', color }}>
-                    {exam.exam_type}
-                  </span>
-                </div>
-                <h3 className="font-semibold mb-3 leading-snug" style={{ color: '#f4f9fd' }}>{exam.title}</h3>
-                <div className="flex flex-wrap gap-3 mb-4">
-                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
-                    <Clock size={12} style={{ color }} />{exam.duration_minutes} min
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
-                    <BookOpen size={12} style={{ color }} />{exam.total_questions} questions
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
-                    <Zap size={12} style={{ color: '#f59e0b' }} />{exam.total_marks} marks
-                  </div>
-                </div>
-                <button onClick={() => startExam(exam.id)} disabled={!!starting}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-mono-display text-xs font-bold transition-all"
-                  style={{ background: starting === exam.id ? color + '30' : color, color: starting === exam.id ? color : '#010101' }}>
-                  {starting === exam.id ? (
-                    <><div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />Starting...</>
-                  ) : (
-                    <><Play size={12} />Start Test<ChevronRight size={12} /></>
-                  )}
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
+    <span>
+      {parts.map((part, i) => {
+        if (part.startsWith('$') && part.endsWith('$')) {
+          return <code key={i} className="px-1 py-0.5 rounded text-sm" style={{ background: 'rgba(43,175,252,0.1)', color: '#2baffc', fontFamily: 'JetBrains Mono, monospace' }}>{part.slice(1, -1)}</code>
+        }
+        return <span key={i}>{part}</span>
+      })}
+    </span>
   )
 }
 
-export default function ExamPage() {
-  return <Suspense fallback={<div />}><ExamPageInner /></Suspense>
+export default function ExamEnginePage() {
+  const router = useRouter()
+  const { sessionId } = useParams() as { sessionId: string }
+
+  const [session, setSession] = useState<Session | null>(null)
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [current, setCurrent] = useState(0)
+  const [answers, setAnswers] = useState<AnswerState>({})
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
+  const [showPalette, setShowPalette] = useState(true)
+  const [submitted, setSubmitted] = useState(false)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const stateRef = useRef({ questions, answers, session, timeLeft, submitting, submitted, sessionId })
+
+  useEffect(() => {
+    stateRef.current = { questions, answers, session, timeLeft, submitting, submitted, sessionId }
+  })
+
+  useEffect(() => {
+    async function load() {
+      const { data: sessionData } = await supabase
+        .from('test_sessions')
+        .select('*, mock_exams(title, duration_minutes, total_questions)')
+        .eq('id', sessionId)
+        .single()
+
+      if (!sessionData) { router.push('/dashboard/exam'); return }
+      if (sessionData.status === 'completed') { router.push(`/dashboard/results/${sessionId}`); return }
+
+      setSession(sessionData as Session)
+
+      const { data: mqData } = await supabase
+        .from('mock_exam_questions')
+        .select('question_id, question_order')
+        .eq('mock_exam_id', sessionData.mock_exam_id)
+        .order('question_order')
+
+      if (mqData && mqData.length > 0) {
+        const questionIds = mqData.map((m: { question_id: string }) => m.question_id)
+        const { data: qData } = await supabase
+          .from('questions')
+          .select('*, subjects(name, code)')
+          .in('id', questionIds)
+
+        if (qData) {
+          const ordered = mqData
+            .map((m: { question_id: string }) => qData.find((q: { id: string }) => q.id === m.question_id))
+            .filter((q): q is Question => q !== undefined)
+          setQuestions(ordered)
+          const initialAnswers: AnswerState = {}
+          ordered.forEach(q => {
+            initialAnswers[q.id] = { selected: null, flagged: false, visited: false }
+          })
+          setAnswers(initialAnswers)
+        }
+      }
+
+      const durationSeconds = (sessionData.mock_exams?.duration_minutes || 180) * 60
+      setTimeLeft(durationSeconds)
+    }
+    load()
+  }, [sessionId, router])
+
+  useEffect(() => {
+    if (timeLeft <= 0 || submitted) return
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) {
+          clearInterval(timerRef.current!)
+          handleSubmit()
+          return 0
+        }
+        return t - 1
+      })
+    }, 1000)
+    return () => clearInterval(timerRef.current!)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitted, timeLeft === 0])
+
+  useEffect(() => {
+    if (!questions[current]) return
+    const qId = questions[current].id
+    setAnswers(a => ({ ...a, [qId]: { ...(a[qId] || { selected: null, flagged: false, visited: false }), visited: true } }))
+  }, [current, questions])
+
+  function selectAnswer(qId: string, opt: string) {
+    setAnswers(a => ({
+      ...a,
+      [qId]: { ...(a[qId] || { selected: null, flagged: false, visited: true }), selected: opt || null },
+    }))
+  }
+
+  function toggleFlag(qId: string) {
+    setAnswers(a => ({
+      ...a,
+      [qId]: { ...(a[qId] || { selected: null, flagged: false, visited: true }), flagged: !a[qId]?.flagged },
+    }))
+  }
+
+  const handleSubmit = useCallback(async () => {
+    const { submitting, submitted, questions, answers, session, timeLeft, sessionId } = stateRef.current
+    if (submitting || submitted) return
+    setSubmitting(true)
+    clearInterval(timerRef.current!)
+
+    let correct = 0, wrong = 0, skipped = 0
+    let physScore = 0, chemScore = 0, mathsScore = 0
+    const wrongTopics: string[] = []
+    const correctTopics: string[] = []
+
+    const answerInserts = questions.map(q => {
+      const ans = answers[q.id]
+      const selected = ans?.selected || null
+      const isCorrect = selected === q.correct_option
+
+      if (!selected) skipped++
+      else if (isCorrect) {
+        correct++
+        correctTopics.push(q.topic || 'General')
+        const subj = q.subjects?.name || ''
+        if (subj === 'Physics') physScore += 4
+        else if (subj === 'Chemistry') chemScore += 4
+        else mathsScore += 4
+      } else {
+        wrong++
+        wrongTopics.push(q.topic || 'General')
+        const subj = q.subjects?.name || ''
+        if (subj === 'Physics') physScore -= 1
+        else if (subj === 'Chemistry') chemScore -= 1
+        else mathsScore -= 1
+      }
+
+      return {
+        session_id: sessionId,
+        question_id: q.id,
+        selected_option: selected,
+        is_correct: selected ? isCorrect : null,
+      }
+    })
+
+    const totalScore = Math.max(0, correct * 4 - wrong)
+    const maxScore = session?.max_score || 300
+    const percentage = Math.round((totalScore / maxScore) * 100 * 10) / 10
+    const timeUsed = (session?.mock_exams?.duration_minutes || 180) * 60 - timeLeft
+
+    const weakTopicsUniq = Array.from(new Set(wrongTopics)).slice(0, 8)
+    const strongTopicsUniq = Array.from(new Set(correctTopics)).slice(0, 5)
+
+    await supabase.from('test_answers').insert(answerInserts)
+
+    let aiAnalysis = null
+    try {
+      const res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          examType: session?.exam_type || 'JEE',
+          subjectScores: { physics: physScore, chemistry: chemScore, maths: mathsScore },
+          wrongTopics: weakTopicsUniq,
+          correctTopics: strongTopicsUniq,
+          totalScore,
+          maxScore,
+          timeSpent: timeUsed,
+        }),
+      })
+      const aiData = await res.json()
+      aiAnalysis = aiData.analysis
+    } catch (e) {
+      console.error('AI analysis failed', e)
+    }
+
+    await supabase.from('test_sessions').update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      time_taken_seconds: timeUsed,
+      total_score: totalScore,
+      percentage,
+      correct_count: correct,
+      wrong_count: wrong,
+      skipped_count: skipped,
+      physics_score: physScore,
+      chemistry_score: chemScore,
+      maths_score: mathsScore,
+      ai_analysis: aiAnalysis,
+      ai_weak_topics: weakTopicsUniq,
+      ai_strong_topics: strongTopicsUniq,
+    }).eq('id', sessionId)
+
+    setSubmitted(true)
+    router.push(`/dashboard/results/${sessionId}`)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  if (!session || questions.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen" style={{ background: '#010101' }}>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 rounded-full animate-spin mx-auto mb-3"
+            style={{ borderColor: '#2baffc', borderTopColor: 'transparent' }} />
+          <p className="text-sm" style={{ color: 'rgba(244,249,253,0.4)' }}>Loading exam...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const q = questions[current]
+  const qAns = answers[q.id] || { selected: null, flagged: false, visited: false }
+  const attempted = Object.values(answers).filter(a => a.selected).length
+  const flagged = Object.values(answers).filter(a => a.flagged).length
+  const timerColor = timeLeft < 300 ? '#ff6b6b' : timeLeft < 900 ? '#f59e0b' : '#2baffc'
+
+  function qStatus(qId: string) {
+    const a = answers[qId]
+    if (!a) return 'unvisited'
+    if (a.flagged) return 'flagged'
+    if (a.selected) return 'answered'
+    if (a.visited) return 'visited'
+    return 'unvisited'
+  }
+
+  function statusStyle(status: string) {
+    const map: Record<string, { bg: string; color: string }> = {
+      answered: { bg: '#55c360', color: '#010101' },
+      flagged: { bg: '#f59e0b', color: '#010101' },
+      visited: { bg: '#1e1e24', color: 'rgba(244,249,253,0.6)' },
+      unvisited: { bg: '#0a0a0b', color: 'rgba(244,249,253,0.3)' },
+    }
+    return map[status] || map.unvisited
+  }
+
+  return (
+    <div className="h-screen flex flex-col" style={{ background: '#010101' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+        style={{ background: '#0a0a0b', borderBottom: '1px solid #1e1e24' }}>
+        <span className="font-mono-display text-xs font-bold" style={{ color: '#f4f9fd' }}>
+          {session.mock_exams?.title?.slice(0, 40) || 'Mock Test'}
+        </span>
+        <div className="flex items-center gap-4 text-xs">
+          <span style={{ color: '#55c360' }}>✓ {attempted}</span>
+          <span style={{ color: '#f59e0b' }}>⚑ {flagged}</span>
+          <span style={{ color: 'rgba(244,249,253,0.4)' }}>↷ {questions.length - attempted}</span>
+        </div>
+        <div className="font-mono-display font-bold text-lg" style={{ color: timerColor }}>
+          {formatTime(timeLeft)}
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Question area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 pt-5 pb-3 flex items-center gap-3 flex-shrink-0">
+            <span className="font-mono-display text-xs px-2 py-1 rounded" style={{ background: '#1e1e24', color: 'rgba(244,249,253,0.5)' }}>
+              Q{current + 1}/{questions.length}
+            </span>
+            <span className="font-mono-display text-xs px-2 py-1 rounded" style={{ background: 'rgba(43,175,252,0.1)', color: '#2baffc' }}>
+              {q.subjects?.name || 'General'}
+            </span>
+            {q.topic && <span className="text-xs" style={{ color: 'rgba(244,249,253,0.3)' }}>{q.topic}</span>}
+          </div>
+
+          <div className="px-6 pb-4 flex-shrink-0">
+            <p className="text-base leading-relaxed" style={{ color: '#f4f9fd' }}>
+              {q.has_math ? <MathText text={q.question_text} /> : q.question_text}
+            </p>
+          </div>
+
+          <div className="px-6 flex-1 overflow-auto">
+            <div className="space-y-3 pb-4">
+              {OPTS.map(opt => {
+                const isSelected = qAns.selected === opt
+                const optText = getOptionText(q, opt)
+                return (
+                  <button key={opt}
+                    onClick={() => selectAnswer(q.id, opt)}
+                    className="w-full flex items-start gap-4 p-4 rounded-xl text-left transition-all"
+                    style={{
+                      background: isSelected ? 'rgba(43,175,252,0.12)' : '#0a0a0b',
+                      border: `1px solid ${isSelected ? '#2baffc' : '#1e1e24'}`,
+                    }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-mono-display text-xs font-bold"
+                      style={{ background: isSelected ? '#2baffc' : '#1e1e24', color: isSelected ? '#010101' : 'rgba(244,249,253,0.6)' }}>
+                      {opt}
+                    </div>
+                    <span className="text-sm leading-relaxed pt-1" style={{ color: isSelected ? '#f4f9fd' : 'rgba(244,249,253,0.75)' }}>
+                      {q.has_math ? <MathText text={optText} /> : optText}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Nav controls */}
+          <div className="px-6 py-4 flex items-center justify-between flex-shrink-0" style={{ borderTop: '1px solid #1e1e24' }}>
+            <div className="flex gap-2">
+              <button onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}
+                className="btn-ghost flex items-center gap-2 py-2 px-3 text-xs disabled:opacity-30">
+                <ChevronLeft size={14} /> Prev
+              </button>
+              <button onClick={() => toggleFlag(q.id)}
+                className="flex items-center gap-2 py-2 px-3 rounded-lg text-xs transition-all"
+                style={{
+                  background: qAns.flagged ? 'rgba(245,158,11,0.15)' : 'transparent',
+                  color: qAns.flagged ? '#f59e0b' : 'rgba(244,249,253,0.5)',
+                  border: `1px solid ${qAns.flagged ? 'rgba(245,158,11,0.4)' : '#1e1e24'}`,
+                }}>
+                {qAns.flagged ? <Bookmark size={14} /> : <BookmarkPlus size={14} />}
+                {qAns.flagged ? 'Flagged' : 'Flag'}
+              </button>
+            </div>
+            <div className="flex gap-2">
+              {qAns.selected && (
+                <button onClick={() => selectAnswer(q.id, '')}
+                  className="py-2 px-3 rounded-lg text-xs"
+                  style={{ background: 'rgba(255,107,107,0.1)', color: '#ff8080', border: '1px solid rgba(255,107,107,0.2)' }}>
+                  Clear
+                </button>
+              )}
+              {current < questions.length - 1 ? (
+                <button onClick={() => setCurrent(c => Math.min(questions.length - 1, c + 1))} className="btn-primary flex items-center gap-2 py-2 px-4 text-xs">
+                  Next <ChevronRight size={14} />
+                </button>
+              ) : (
+                <button onClick={handleSubmit} disabled={submitting} className="btn-emerald flex items-center gap-2 py-2 px-4 text-xs">
+                  {submitting ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Send size={14} />}
+                  Submit
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Question Palette */}
+        <div className={`transition-all duration-300 overflow-hidden flex-shrink-0 ${showPalette ? 'w-64' : 'w-0'}`}
+          style={{ borderLeft: showPalette ? '1px solid #1e1e24' : 'none' }}>
+          <div className="h-full flex flex-col" style={{ background: 'rgba(17,17,20,0.7)', backdropFilter: 'blur(12px)' }}>
+            <div className="p-4" style={{ borderBottom: '1px solid #1e1e24' }}>
+              <span className="font-mono-display text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>QUESTION PALETTE</span>
+            </div>
+            <div className="px-4 py-3 space-y-1.5" style={{ borderBottom: '1px solid #1e1e24' }}>
+              {[
+                { label: 'Answered', color: '#55c360' },
+                { label: 'Flagged', color: '#f59e0b' },
+                { label: 'Visited', color: '#2a2a32' },
+                { label: 'Unvisited', color: '#0a0a0b' },
+              ].map(l => (
+                <div key={l.label} className="flex items-center gap-2 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
+                  <div className="w-3 h-3 rounded-sm" style={{ background: l.color, border: '1px solid rgba(255,255,255,0.1)' }} />
+                  {l.label}
+                </div>
+              ))}
+            </div>
+            <div className="flex-1 p-4 overflow-auto">
+              <div className="grid grid-cols-5 gap-1.5">
+                {questions.map((question, idx) => {
+                  const status = qStatus(question.id)
+                  const style = statusStyle(status)
+                  return (
+                    <button key={question.id} onClick={() => setCurrent(idx)}
+                      className="w-9 h-9 rounded-lg font-mono-display text-xs font-bold transition-all"
+                      style={{
+                        background: current === idx ? '#2baffc' : style.bg,
+                        color: current === idx ? '#010101' : style.color,
+                        border: `1px solid ${current === idx ? '#2baffc' : 'rgba(255,255,255,0.05)'}`,
+                      }}>
+                      {idx + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="p-4" style={{ borderTop: '1px solid #1e1e24' }}>
+              <div className="text-xs mb-3 text-center" style={{ color: 'rgba(244,249,253,0.4)' }}>
+                {attempted}/{questions.length} attempted
+              </div>
+              <button onClick={handleSubmit} disabled={submitting}
+                className="btn-emerald w-full flex items-center justify-center gap-2 py-3 text-xs">
+                {submitting ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Send size={14} />}
+                Submit Exam
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button onClick={() => setShowPalette(s => !s)}
+          className="fixed top-1/2 -translate-y-1/2 w-5 h-12 flex items-center justify-center rounded-l-md z-10 transition-all duration-300"
+          style={{
+            background: '#1e1e24', color: 'rgba(244,249,253,0.5)',
+            right: showPalette ? '256px' : '0px',
+          }}>
+          {showPalette ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+        </button>
+      </div>
+    </div>
+  )
 }
