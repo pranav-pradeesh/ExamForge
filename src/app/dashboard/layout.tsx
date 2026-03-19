@@ -5,14 +5,15 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
   LayoutDashboard, FlaskConical, BarChart3, BookOpen,
-  CheckSquare, LogOut, Menu, X, Zap, ChevronRight
+  CheckSquare, LogOut, Menu, X, Zap, ChevronRight, MessageCircle
 } from 'lucide-react'
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/exam', label: 'Mock Tests', icon: FlaskConical },
   { href: '/dashboard/results', label: 'My Results', icon: BarChart3 },
-  { href: '/dashboard/notes', label: 'Notes', icon: BookOpen },
+  { href: '/dashboard/chat', label: 'AI Tutor', icon: MessageCircle },
+  { href: '/dashboard/notes', label: 'Notebook', icon: BookOpen },
   { href: '/dashboard/checklist', label: 'Study Plan', icon: CheckSquare },
 ]
 
