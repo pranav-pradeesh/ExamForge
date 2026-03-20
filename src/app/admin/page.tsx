@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { DashCard } from '@/components/ui/spotlight-card'
 import {
   Shield, Eye, EyeOff, Users, BookOpen, BarChart3, Plus, Trash2,
   Edit3, X, Check, Upload, FileText, Loader2, ChevronDown, ChevronUp
@@ -27,7 +28,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#010101' }}>
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(43,175,252,0.06) 0%, transparent 60%)' }} />
       <div className="w-full max-w-sm relative">
-        <div className="card animate-in" style={{ borderColor: 'rgba(43,175,252,0.2)' }}>
+        <DashCard className="animate-in" style={{ borderColor: 'rgba(43,175,252,0.2)' }}>
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(43,175,252,0.15)', color: '#2baffc' }}>
               <Shield size={20} />
@@ -54,7 +55,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
             </button>
           </form>
         </div>
-      </div>
+      </DashCard>
     </div>
   )
 }
@@ -333,7 +334,7 @@ function AdminPanel() {
                   ))}
                 </div>
                 {/* Subjects overview */}
-                <div className="card" style={{ borderColor: '#1e1e24' }}>
+                <DashCard style={{ borderColor: '#1e1e24' }}>
                   <h3 className="font-mono-display text-sm font-bold mb-4" style={{ color: '#f4f9fd' }}>Subjects Configured</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {['JEE', 'VIT'].map(et => (
@@ -350,8 +351,8 @@ function AdminPanel() {
                       </div>
                     ))}
                   </div>
-                </div>
-                <div className="card" style={{ borderColor: '#1e1e24' }}>
+                </DashCard>
+                <DashCard style={{ borderColor: '#1e1e24' }}>
                   <h3 className="font-mono-display text-sm font-bold mb-4" style={{ color: '#f4f9fd' }}>Recent Registrations</h3>
                   {profiles.slice(0, 5).length === 0 ? (
                     <p className="text-sm" style={{ color: 'rgba(244,249,253,0.4)' }}>No students yet</p>
@@ -368,7 +369,7 @@ function AdminPanel() {
                       <span className="text-xs font-mono-display px-2 py-0.5 rounded" style={{ background: '#1e1e24', color: '#2baffc' }}>{p.target_exam}</span>
                     </div>
                   ))}
-                </div>
+                </DashCard>
               </div>
             )}
 
@@ -388,7 +389,7 @@ function AdminPanel() {
                 </div>
 
                 {showQForm && (
-                  <div className="card" style={{ borderColor: 'rgba(43,175,252,0.3)' }}>
+                  <DashCard style={{ borderColor: 'rgba(43,175,252,0.3)' }}>
                     <div className="flex items-center justify-between mb-5">
                       <span className="font-mono-display font-bold text-sm" style={{ color: '#2baffc' }}>{editId ? 'Edit Question' : 'New Question'}</span>
                       <button onClick={() => { setShowQForm(false); setEditId(null) }} style={{ color: 'rgba(244,249,253,0.4)' }}><X size={16} /></button>
@@ -484,10 +485,10 @@ function AdminPanel() {
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </DashCard>
                 )}
 
-                <div className="card" style={{ borderColor: '#1e1e24', padding: 0 }}>
+                <DashCard style={{ borderColor: '#1e1e24', padding: 0 }}>
                   <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid #1e1e24' }}>
                     <span className="font-mono-display text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>{filteredQ.length} QUESTIONS</span>
                   </div>
@@ -532,7 +533,7 @@ function AdminPanel() {
                       ))}
                     </div>
                   )}
-                </div>
+                </DashCard>
               </div>
             )}
 
@@ -546,7 +547,7 @@ function AdminPanel() {
                   </p>
                 </div>
 
-                <div className="card space-y-4" style={{ borderColor: '#1e1e24' }}>
+                <DashCard className="space-y-4" style={{ borderColor: '#1e1e24' }}>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
                       <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>EXAM TYPE</label>
@@ -591,11 +592,11 @@ Explanation: Centripetal acceleration = v²/r"
                     className="btn-primary flex items-center gap-2 py-3 px-6">
                     {extracting ? <><Loader2 size={14} className="animate-spin" /> Extracting with AI...</> : <><FileText size={14} /> Extract Questions with AI</>}
                   </button>
-                </div>
+                </DashCard>
 
                 {/* Extracted questions preview */}
                 {extractedQs.length > 0 && (
-                  <div className="card space-y-4" style={{ borderColor: 'rgba(85,195,96,0.3)' }}>
+                  <DashCard className="space-y-4" style={{ borderColor: 'rgba(85,195,96,0.3)' }}>
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-mono-display font-bold text-sm" style={{ color: '#55c360' }}>
@@ -663,7 +664,7 @@ Explanation: Centripetal acceleration = v²/r"
                         )
                       })}
                     </div>
-                  </div>
+                  </DashCard>
                 )}
               </div>
             )}
@@ -703,7 +704,7 @@ Explanation: Centripetal acceleration = v²/r"
 
             {/* ── STUDENTS ── */}
             {tab === 'students' && (
-              <div className="card" style={{ borderColor: '#1e1e24', padding: 0 }}>
+              <DashCard style={{ borderColor: '#1e1e24', padding: 0 }}>
                 <div className="p-4" style={{ borderBottom: '1px solid #1e1e24' }}>
                   <span className="font-mono-display text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>{profiles.length} STUDENTS</span>
                 </div>
@@ -733,7 +734,7 @@ Explanation: Centripetal acceleration = v²/r"
                     </span>
                   </div>
                 ))}
-              </div>
+              </DashCard>
             )}
           </div>
         )}
