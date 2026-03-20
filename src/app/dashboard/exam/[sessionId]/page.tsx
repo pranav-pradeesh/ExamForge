@@ -251,6 +251,25 @@ export default function ExamEnginePage() {
     }).eq('id', sessionId)
 
     setSubmitted(true)
+
+    // Record streak activity on test completion
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const today = new Date().toISOString().slice(0, 10)
+        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+        const { data: p } = await supabase.from('profiles').select('current_streak,longest_streak,last_activity_date').eq('id', user.id).single()
+        if (p && p.last_activity_date !== today) {
+          const newStreak = p.last_activity_date === yesterday ? (p.current_streak || 0) + 1 : 1
+          await supabase.from('profiles').update({
+            current_streak: newStreak,
+            longest_streak: Math.max(newStreak, p.longest_streak || 0),
+            last_activity_date: today,
+          }).eq('id', user.id)
+        }
+      }
+    } catch (e) { /* non-critical */ }
+
     router.push(`/dashboard/results/${sessionId}`)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
