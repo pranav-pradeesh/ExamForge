@@ -14,29 +14,22 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function handleLogin(e: React.FormEvent) {
+  // Called BEFORE animation — validates credentials
+  async function handleLoginClick(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault()
-    setLoading(true)
     setError('')
+    setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError(error.message)
       setLoading(false)
-      return
     }
-    router.push('/dashboard')
+    // If success, loading stays true — onSuccess fires after animation
   }
 
-  async function handleParticleLogin() {
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      router.push('/dashboard')
-    }
+  // Called AFTER 2s animation completes
+  function handleLoginSuccess() {
+    router.push('/dashboard')
   }
 
   return (
@@ -64,9 +57,7 @@ export default function LoginPage() {
           </div>
 
           <h1 className="font-mono-display font-bold text-2xl mb-1" style={{ color: '#f4f9fd' }}>Sign in</h1>
-          <p className="text-sm mb-8" style={{ color: 'rgba(244,249,253,0.5)' }}>
-            Continue your exam preparation
-          </p>
+          <p className="text-sm mb-8" style={{ color: 'rgba(244,249,253,0.5)' }}>Continue your exam preparation</p>
 
           {error && (
             <div className="mb-4 px-4 py-3 rounded-lg text-sm"
@@ -75,7 +66,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form className="space-y-4">
             <div>
               <label className="block text-xs font-mono-display mb-2" style={{ color: 'rgba(244,249,253,0.6)' }}>EMAIL</label>
               <input type="email" className="input-field" placeholder="you@example.com"
@@ -87,8 +78,7 @@ export default function LoginPage() {
                 <input type={showPass ? 'text' : 'password'} className="input-field pr-12"
                   placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
                 <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ color: 'rgba(244,249,253,0.4)' }}>
+                  className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(244,249,253,0.4)' }}>
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -99,12 +89,11 @@ export default function LoginPage() {
               loading={loading}
               disabled={!email || !password}
               className="w-full py-3 text-sm"
-             
-              successDuration={550}
-              onClick={e => { e.preventDefault(); handleParticleLogin() }}
+              successDuration={2000}
+              onClick={handleLoginClick}
+              onSuccess={handleLoginSuccess}
             >
-              <Zap size={14} />
-              Sign In
+              <Zap size={14} /> Sign In
             </ParticleButton>
           </form>
 
