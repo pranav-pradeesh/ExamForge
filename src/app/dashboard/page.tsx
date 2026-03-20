@@ -3,31 +3,36 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { getNebulaGradient, scoreColor, formatTime } from '@/lib/utils'
-import { BarChart3, Zap, Target, TrendingUp, Play, Clock, ChevronRight, Award } from 'lucide-react'
+import { BarChart3, Zap, Target, Play, Clock, ChevronRight, Award } from 'lucide-react'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 import { DashCard } from '@/components/ui/spotlight-card'
+import { StreakWidget } from '@/components/ui/streak-widget'
+import { CountdownWidget } from '@/components/ui/countdown-widget'
+import { LeaderboardWidget } from '@/components/ui/leaderboard-widget'
+import { useStreak } from '@/hooks/useStreak'
 
 interface Stats {
   totalTests: number; avgScore: number; bestScore: number
   physicsAvg: number; chemAvg: number; mathsAvg: number
   recentSessions: {
-    id: string; exam_type: string; total_score: number; max_score: number
-    percentage: number; correct_count: number; wrong_count: number
-    time_taken_seconds: number; started_at: string
-    physics_score: number; chemistry_score: number; maths_score: number
+    id: string; exam_type: string; percentage: number; correct_count: number
+    wrong_count: number; time_taken_seconds: number; started_at: string
   }[]
   weakTopics: string[]
 }
 
 export default function DashboardPage() {
+  const [userId, setUserId] = useState<string | null>(null)
   const [profile, setProfile] = useState<{ full_name: string; target_exam: string } | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const { streak, recordActivity } = useStreak(userId)
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+      setUserId(user.id)
       const [{ data: profileData }, { data: sessions }] = await Promise.all([
         supabase.from('profiles').select('full_name,target_exam').eq('id', user.id).single(),
         supabase.from('test_sessions').select('*').eq('user_id', user.id).eq('status', 'completed').order('started_at', { ascending: false }).limit(10),
@@ -35,17 +40,16 @@ export default function DashboardPage() {
       setProfile(profileData)
       if (sessions && sessions.length > 0) {
         const total = sessions.length
-        const avgScore = sessions.reduce((a: number, s: { percentage: number }) => a + s.percentage, 0) / total
-        const bestScore = Math.max(...sessions.map((s: { percentage: number }) => s.percentage))
-        const physAvg = sessions.reduce((a: number, s: { physics_score: number }) => a + (s.physics_score || 0), 0) / total
-        const chemAvg = sessions.reduce((a: number, s: { chemistry_score: number }) => a + (s.chemistry_score || 0), 0) / total
-        const mathsAvg = sessions.reduce((a: number, s: { maths_score: number }) => a + (s.maths_score || 0), 0) / total
+        const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
         const weakTopics: string[] = []
         sessions.forEach((s: { ai_weak_topics?: string[] }) => { if (s.ai_weak_topics) weakTopics.push(...s.ai_weak_topics) })
         setStats({
-          totalTests: total, avgScore: Math.round(avgScore * 10) / 10,
-          bestScore: Math.round(bestScore * 10) / 10,
-          physicsAvg: Math.round(physAvg), chemAvg: Math.round(chemAvg), mathsAvg: Math.round(mathsAvg),
+          totalTests: total,
+          avgScore: Math.round(avg(sessions.map((s: { percentage: number }) => s.percentage)) * 10) / 10,
+          bestScore: Math.round(Math.max(...sessions.map((s: { percentage: number }) => s.percentage)) * 10) / 10,
+          physicsAvg: Math.round(avg(sessions.map((s: { physics_score: number }) => s.physics_score || 0))),
+          chemAvg:    Math.round(avg(sessions.map((s: { chemistry_score: number }) => s.chemistry_score || 0))),
+          mathsAvg:   Math.round(avg(sessions.map((s: { maths_score: number }) => s.maths_score || 0))),
           recentSessions: sessions.slice(0, 5),
           weakTopics: [...new Set(weakTopics)].slice(0, 6),
         })
@@ -57,20 +61,19 @@ export default function DashboardPage() {
     load()
   }, [])
 
+  useEffect(() => { if (userId) recordActivity() }, [userId, recordActivity])
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: '#2baffc', borderTopColor: 'transparent' }} />
     </div>
   )
 
-  const totalPct = stats ? stats.physicsAvg + stats.chemAvg + stats.mathsAvg : 0
-  const physPct = totalPct > 0 ? (stats!.physicsAvg / totalPct) * 100 : 33
-  const chemPct = totalPct > 0 ? (stats!.chemAvg / totalPct) * 100 : 33
-  const mathPct = totalPct > 0 ? (stats!.mathsAvg / totalPct) * 100 : 33
+  const total = stats ? stats.physicsAvg + stats.chemAvg + stats.mathsAvg : 1
   const radarData = [
-    { subject: 'Physics', score: stats?.physicsAvg || 0, fullMark: 100 },
-    { subject: 'Chemistry', score: stats?.chemAvg || 0, fullMark: 100 },
-    { subject: 'Mathematics', score: stats?.mathsAvg || 0, fullMark: 100 },
+    { subject: 'Physics',     score: stats?.physicsAvg || 0, fullMark: 100 },
+    { subject: 'Chemistry',   score: stats?.chemAvg    || 0, fullMark: 100 },
+    { subject: 'Mathematics', score: stats?.mathsAvg   || 0, fullMark: 100 },
   ]
   const hasData = stats && stats.totalTests > 0
 
@@ -85,13 +88,19 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in stagger-1">
+      {/* Streak + Countdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 animate-in stagger-1">
+        <StreakWidget current={streak.current} longest={streak.longest} isOnFireToday={streak.isOnFireToday} justExtended={streak.justExtended} />
+        <CountdownWidget targetExam={profile?.target_exam || 'JEE'} />
+      </div>
+
+      {/* 4 stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in stagger-2">
         {[
-          { label: 'Tests Taken', value: stats?.totalTests || 0, icon: <Target size={16} />, color: '#2baffc' },
-          { label: 'Avg Score', value: `${stats?.avgScore || 0}%`, icon: <BarChart3 size={16} />, color: '#55c360' },
-          { label: 'Best Score', value: `${stats?.bestScore || 0}%`, icon: <Award size={16} />, color: '#f59e0b' },
-          { label: 'Streak', value: '—', icon: <TrendingUp size={16} />, color: '#2baffc' },
+          { label: 'Tests Taken', value: stats?.totalTests || 0,      icon: <Target size={16} />,   color: '#2baffc' },
+          { label: 'Avg Score',   value: `${stats?.avgScore || 0}%`,  icon: <BarChart3 size={16} />, color: '#55c360' },
+          { label: 'Best Score',  value: `${stats?.bestScore || 0}%`, icon: <Award size={16} />,    color: '#f59e0b' },
+          { label: 'Day Streak',  value: streak.current,               icon: <Zap size={16} />,      color: streak.current >= 7 ? '#f59e0b' : '#2baffc' },
         ].map(s => (
           <DashCard key={s.label} glowColor={s.color === '#55c360' ? 'green' : s.color === '#f59e0b' ? 'amber' : 'blue'}>
             <div className="flex items-center justify-between mb-3">
@@ -103,11 +112,11 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Progress Nebula + Radar */}
-      <div className="grid lg:grid-cols-5 gap-5 animate-in stagger-2">
-        <DashCard glowColor="blue" className="lg:col-span-2 relative overflow-hidden" style={{ padding: '24px' }}>
+      {/* Nebula + Radar */}
+      <div className="grid lg:grid-cols-5 gap-5 animate-in stagger-3">
+        <DashCard glowColor="blue" className="lg:col-span-2 relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none opacity-20 rounded-xl overflow-hidden">
-            <div className="absolute inset-0" style={{ background: getNebulaGradient(physPct, chemPct, mathPct), filter: 'blur(28px)', animation: 'nebula 8s ease-in-out infinite' }} />
+            <div className="absolute inset-0" style={{ background: getNebulaGradient(stats?.physicsAvg || 33, stats?.chemAvg || 33, stats?.mathsAvg || 33), filter: 'blur(28px)', animation: 'nebula 8s ease-in-out infinite' }} />
           </div>
           <div className="relative">
             <div className="text-xs font-mono-display mb-4 flex items-center gap-2" style={{ color: 'rgba(244,249,253,0.5)' }}>
@@ -115,9 +124,9 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-4">
               {[
-                { label: 'Physics', val: stats?.physicsAvg || 0, max: 120, color: '#2baffc' },
-                { label: 'Chemistry', val: stats?.chemAvg || 0, max: 120, color: '#55c360' },
-                { label: 'Mathematics', val: stats?.mathsAvg || 0, max: 120, color: '#f59e0b' },
+                { label: 'Physics',     val: stats?.physicsAvg || 0, color: '#2baffc' },
+                { label: 'Chemistry',   val: stats?.chemAvg    || 0, color: '#55c360' },
+                { label: 'Mathematics', val: stats?.mathsAvg   || 0, color: '#f59e0b' },
               ].map(s => (
                 <div key={s.label}>
                   <div className="flex justify-between text-xs mb-1.5">
@@ -125,15 +134,14 @@ export default function DashboardPage() {
                     <span className="font-mono-display font-bold" style={{ color: s.color }}>{s.val}</span>
                   </div>
                   <div className="h-2 rounded-full overflow-hidden" style={{ background: '#1e1e24' }}>
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (s.val / s.max) * 100)}%`, background: s.color }} />
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (s.val / 120) * 100)}%`, background: s.color }} />
                   </div>
                 </div>
               ))}
             </div>
           </div>
         </DashCard>
-
-        <DashCard glowColor="blue" className="lg:col-span-3" style={{ padding: '24px' }}>
+        <DashCard glowColor="blue" className="lg:col-span-3">
           <div className="text-xs font-mono-display mb-4" style={{ color: 'rgba(244,249,253,0.5)' }}>SUBJECT RADAR</div>
           {hasData ? (
             <ResponsiveContainer width="100%" height={200}>
@@ -155,24 +163,22 @@ export default function DashboardPage() {
         </DashCard>
       </div>
 
-      {/* Quick actions + Recent tests */}
+      {/* Quick start + Recent */}
       <div className="grid lg:grid-cols-3 gap-5 animate-in stagger-3">
-        <DashCard glowColor="green" style={{ padding: '24px' }}>
+        <DashCard glowColor="green">
           <div className="text-xs font-mono-display mb-3" style={{ color: 'rgba(244,249,253,0.5)' }}>QUICK START</div>
           <div className="space-y-2">
             {[
-              { label: 'JEE Full Mock', sub: '75 questions · 3h', color: '#2baffc', href: '/dashboard/exam?type=JEE' },
-              { label: 'VITEEE Mock', sub: '125 questions · 2.5h', color: '#55c360', href: '/dashboard/exam?type=VITEEE' },
-              { label: 'Custom Test', sub: 'Pick topic & difficulty', color: '#f59e0b', href: '/dashboard/exam' },
+              { label: 'JEE Full Mock',  sub: '75 questions · 3h',    color: '#2baffc', href: '/dashboard/exam?type=JEE' },
+              { label: 'VITEEE Mock',    sub: '125 questions · 2.5h', color: '#55c360', href: '/dashboard/exam?type=VITEEE' },
+              { label: 'Custom Test',    sub: 'Pick topic & difficulty',color: '#f59e0b', href: '/dashboard/exam' },
             ].map(q => (
               <Link key={q.label} href={q.href}
                 className="flex items-center gap-3 p-3 rounded-xl transition-all"
                 style={{ background: '#0a0a0b', border: '1px solid #1e1e24' }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = q.color + '50')}
                 onMouseLeave={e => (e.currentTarget.style.borderColor = '#1e1e24')}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: q.color + '15', color: q.color }}>
-                  <Play size={12} />
-                </div>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: q.color + '15', color: q.color }}><Play size={12} /></div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium" style={{ color: '#f4f9fd' }}>{q.label}</div>
                   <div className="text-xs" style={{ color: 'rgba(244,249,253,0.4)' }}>{q.sub}</div>
@@ -182,8 +188,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </DashCard>
-
-        <DashCard glowColor="blue" className="lg:col-span-2" style={{ padding: '24px' }}>
+        <DashCard glowColor="blue" className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div className="text-xs font-mono-display" style={{ color: 'rgba(244,249,253,0.5)' }}>RECENT TESTS</div>
             <Link href="/dashboard/results" className="text-xs" style={{ color: '#2baffc' }}>View all →</Link>
@@ -225,8 +230,15 @@ export default function DashboardPage() {
         </DashCard>
       </div>
 
+      {/* Leaderboard widget */}
+      {userId && profile && (
+        <div className="animate-in stagger-4">
+          <LeaderboardWidget currentUserId={userId} targetExam={profile.target_exam} />
+        </div>
+      )}
+
       {stats && stats.weakTopics.length > 0 && (
-        <DashCard glowColor="orange" className="animate-in stagger-4" style={{ padding: '24px' }}>
+        <DashCard glowColor="orange" className="animate-in stagger-4">
           <div className="text-xs font-mono-display mb-4" style={{ color: 'rgba(244,249,253,0.5)' }}>AI-IDENTIFIED WEAK ZONES</div>
           <div className="flex flex-wrap gap-2">
             {stats.weakTopics.map(t => (
