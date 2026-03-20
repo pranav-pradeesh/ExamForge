@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { DashCard } from '@/components/ui/spotlight-card'
 import { scoreColor, formatTime, difficultyColor } from '@/lib/utils'
 import { CheckCircle, XCircle, SkipForward, Clock, Brain, ChevronLeft, ChevronDown, ChevronUp, Sparkles, RotateCcw } from 'lucide-react'
 
@@ -124,7 +125,7 @@ export default function ResultDetailPage() {
       </Link>
 
       {/* Score card */}
-      <div className="card relative overflow-hidden animate-in stagger-1" style={{ borderColor: '#1e1e24' }}>
+      <DashCard className="relative overflow-hidden animate-in stagger-1" style={{ borderColor: '#1e1e24' }}>
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: `radial-gradient(ellipse at 80% 50%, ${color}10 0%, transparent 60%)` }} />
         <div className="relative grid md:grid-cols-4 gap-6">
@@ -160,11 +161,11 @@ export default function ResultDetailPage() {
           <span className="mx-2">·</span>
           {new Date(session.started_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
         </div>
-      </div>
+      </DashCard>
 
       {/* AI Analysis */}
       {session.ai_analysis && (
-        <div className="card animate-in stagger-2" style={{ borderColor: 'rgba(43,175,252,0.3)', background: 'rgba(43,175,252,0.04)' }}>
+        <DashCard className="animate-in stagger-2" style={{ borderColor: 'rgba(43,175,252,0.3)', background: 'rgba(43,175,252,0.04)' }}>
           <button className="w-full flex items-center justify-between" onClick={() => setShowAnalysis(!showAnalysis)}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(43,175,252,0.15)', color: '#2baffc' }}>
@@ -208,7 +209,7 @@ export default function ResultDetailPage() {
               )}
             </div>
           )}
-        </div>
+        </DashCard>
       )}
 
       {/* Question Review */}
