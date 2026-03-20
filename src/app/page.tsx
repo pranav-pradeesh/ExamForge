@@ -1,11 +1,9 @@
 'use client'
-import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen } from 'lucide-react'
 import { ParticleButton } from '@/components/ui/particle-button'
 import { GlowCard } from '@/components/ui/spotlight-card'
-import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
 
 const EXAMS = [
   { code: 'JEE',   name: 'JEE Main & Advanced', body: 'NTA',           color: '#2baffc', duration: '3h / 6h', questions: '75 / 114', subjects: ['Physics','Chemistry','Mathematics'],            pattern: '+4 / -1', note: 'NITs, IIITs & IITs' },
@@ -104,25 +102,53 @@ export default function HomePage() {
             <h2 className="font-mono-display font-bold text-2xl sm:text-3xl mb-2" style={{ color: '#f4f9fd' }}>Exams we cover</h2>
             <p className="text-sm" style={{ color: 'rgba(244,249,253,0.5)' }}>Authentic patterns. Real PYQs. Correct marking schemes.</p>
           </div>
-          {/* Mobile: horizontal scroll. Tablet+: grid */}
-          <div className="flex gap-3 overflow-x-auto pb-3 sm:pb-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-4 snap-x snap-mandatory"
-            style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+          {/* Desktop grid */}
+          <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...EXAMS, { code: 'B.ARCH', name: 'JEE Main Paper 2A', body: '', color: '#fb923c', duration: '', questions: '', subjects: [], pattern: '', note: 'Math + Aptitude + Drawing', barch: true }].map((exam) => {
+              const colorKey = exam.color === '#2baffc' ? 'blue' : exam.color === '#55c360' ? 'green' : exam.color === '#f59e0b' ? 'amber' : exam.color === '#a78bfa' ? 'purple' : exam.color === '#ec4899' ? 'pink' : 'orange'
+              return (
+                <GlowCard key={exam.code} glowColor={colorKey as 'blue'|'green'|'amber'|'purple'|'pink'|'orange'}
+                  style={{ background: '#111114', border: '1px solid #1e1e24', padding: '24px' }} className="w-full">
+                  <div className="flex items-start justify-between mb-3">
+                    <span className="font-mono-display text-xs font-bold px-2 py-1 rounded" style={{ background: exam.color + '15', color: exam.color }}>{exam.code}</span>
+                    {exam.body && <span className="text-xs" style={{ color: 'rgba(244,249,253,0.35)' }}>{exam.body}</span>}
+                  </div>
+                  <h3 className="font-semibold mb-1" style={{ color: '#f4f9fd' }}>{exam.name}</h3>
+                  <p className="text-xs mb-3" style={{ color: exam.color }}>{exam.note}</p>
+                  {exam.duration && (
+                    <div className="flex gap-3 mb-3 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
+                      <span className="flex items-center gap-1"><Clock size={10} />{exam.duration}</span>
+                      <span className="flex items-center gap-1"><BookOpen size={10} />{exam.questions}Q</span>
+                      <span className="flex items-center gap-1" style={{ color: '#f59e0b' }}>{exam.pattern}</span>
+                    </div>
+                  )}
+                  {(exam.subjects as string[]).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {(exam.subjects as string[]).map(s => <span key={s} className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(244,249,253,0.5)' }}>{s}</span>)}
+                    </div>
+                  )}
+                  {(exam as { barch?: boolean }).barch && <p className="text-xs" style={{ color: 'rgba(244,249,253,0.4)' }}>Coming soon.</p>}
+                </GlowCard>
+              )
+            })}
+          </div>
+
+          {/* Mobile horizontal scroll */}
+          <div className="sm:hidden flex gap-3 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
             {EXAMS.map(exam => {
               const colorKey = exam.color === '#2baffc' ? 'blue' : exam.color === '#55c360' ? 'green' : exam.color === '#f59e0b' ? 'amber' : exam.color === '#a78bfa' ? 'purple' : 'pink'
               return (
                 <GlowCard key={exam.code} glowColor={colorKey as 'blue'|'green'|'amber'|'purple'|'pink'}
-                  style={{ background: '#111114', border: '1px solid #1e1e24', padding: '20px', flexShrink: 0, width: '260px' }}
-                  className="sm:w-auto snap-start">
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="font-mono-display text-xs font-bold px-2 py-1 rounded" style={{ background: exam.color + '15', color: exam.color }}>{exam.code}</span>
-                    <span className="text-xs" style={{ color: 'rgba(244,249,253,0.35)' }}>{exam.body}</span>
+                  style={{ background: '#111114', border: '1px solid #1e1e24', padding: '16px', flexShrink: 0, width: '240px' }}>
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="font-mono-display text-xs font-bold px-2 py-0.5 rounded" style={{ background: exam.color + '15', color: exam.color }}>{exam.code}</span>
                   </div>
                   <h3 className="font-semibold text-sm mb-1" style={{ color: '#f4f9fd' }}>{exam.name}</h3>
-                  <p className="text-xs mb-3" style={{ color: exam.color }}>{exam.note}</p>
-                  <div className="flex gap-3 mb-3 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
-                    <span className="flex items-center gap-1"><Clock size={10} />{exam.duration}</span>
-                    <span className="flex items-center gap-1"><BookOpen size={10} />{exam.questions}Q</span>
-                    <span className="flex items-center gap-1" style={{ color: '#f59e0b' }}>{exam.pattern}</span>
+                  <p className="text-xs mb-2" style={{ color: exam.color }}>{exam.note}</p>
+                  <div className="flex gap-2 mb-2 text-xs" style={{ color: 'rgba(244,249,253,0.5)' }}>
+                    <span>{exam.duration}</span>
+                    <span>{exam.questions}Q</span>
+                    <span style={{ color: '#f59e0b' }}>{exam.pattern}</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {exam.subjects.map(s => <span key={s} className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(244,249,253,0.5)' }}>{s}</span>)}
@@ -130,16 +156,8 @@ export default function HomePage() {
                 </GlowCard>
               )
             })}
-            {/* B.Arch card */}
-            <GlowCard glowColor="orange" style={{ background: '#111114', border: '1px solid #1e1e24', padding: '20px', flexShrink: 0, width: '260px' }} className="sm:w-auto snap-start">
-              <span className="font-mono-display text-xs font-bold px-2 py-1 rounded inline-block mb-3" style={{ background: 'rgba(251,146,60,0.15)', color: '#fb923c' }}>B.ARCH</span>
-              <h3 className="font-semibold text-sm mb-1" style={{ color: '#f4f9fd' }}>JEE Main Paper 2A</h3>
-              <p className="text-xs mb-2" style={{ color: '#fb923c' }}>Math + Aptitude + Drawing</p>
-              <p className="text-xs" style={{ color: 'rgba(244,249,253,0.4)' }}>Coming soon.</p>
-            </GlowCard>
           </div>
-          {/* Mobile scroll indicator */}
-          <p className="text-center text-xs mt-3 sm:hidden" style={{ color: 'rgba(244,249,253,0.25)' }}>← scroll to see all exams →</p>
+          <p className="sm:hidden text-center text-xs mt-2" style={{ color: 'rgba(244,249,253,0.25)' }}>← swipe for all exams →</p>
         </div>
       </section>
 
