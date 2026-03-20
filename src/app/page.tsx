@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen } from 'lucide-react'
 import { ParticleButton } from '@/components/ui/particle-button'
 import { GlowCard } from '@/components/ui/spotlight-card'
+import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
 
 const EXAMS = [
   { code: 'JEE',   name: 'JEE Main & Advanced', body: 'NTA',           color: '#2baffc', duration: '3h / 6h', questions: '75 / 114', subjects: ['Physics','Chemistry','Mathematics'],            pattern: '+4 / -1', note: 'NITs, IIITs & IITs' },
