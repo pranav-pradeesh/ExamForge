@@ -1,9 +1,11 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen } from 'lucide-react'
 import { ParticleButton } from '@/components/ui/particle-button'
 import { GlowCard } from '@/components/ui/spotlight-card'
+import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
 import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
 
 const EXAMS = [
@@ -40,8 +42,15 @@ const EXAMS = [
 ]
 
 export default function HomePage() {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+
+  function navAfterAnim(href: string) {
+    return () => {
+      setTimeout(() => router.push(href), 2000)
+    }
+  }
 
   return (
     <div className="min-h-screen" style={{ background: '#010101' }}>
@@ -55,8 +64,8 @@ export default function HomePage() {
             <span className="font-mono-display font-bold tracking-tight" style={{ color: '#f4f9fd' }}>ExamForge</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="btn-ghost text-sm px-4 py-2">Login</Link>
-            <Link href="/signup" className="btn-primary text-sm px-4 py-2">Get Started</Link>
+            <ParticleButton variant="ghost" className="px-4 py-2 text-xs" successDuration={2000} awaitAnimation onSuccess={navAfterAnim('/login')}>Login</ParticleButton>
+            <ParticleButton variant="primary" className="px-4 py-2 text-xs" successDuration={2000} awaitAnimation onSuccess={navAfterAnim('/signup')}>Get Started</ParticleButton>
           </div>
         </div>
       </nav>
@@ -85,16 +94,24 @@ export default function HomePage() {
 
           {/* CTA buttons */}
           <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${mounted ? 'animate-in stagger-3' : 'opacity-0'}`}>
-            <Link href="/signup">
-              <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={1500}>
-                Start Free <ArrowRight size={15} />
-              </ParticleButton>
-            </Link>
-            <Link href="/login">
-              <ParticleButton variant="ghost" className="px-8 py-4 text-sm" successDuration={1500}>
-                Sign In
-              </ParticleButton>
-            </Link>
+            <ParticleButton
+              variant="primary"
+              className="px-8 py-4 text-sm"
+              successDuration={2000}
+              awaitAnimation
+              onSuccess={navAfterAnim('/signup')}
+            >
+              Start Free <ArrowRight size={15} />
+            </ParticleButton>
+            <ParticleButton
+              variant="ghost"
+              className="px-8 py-4 text-sm"
+              successDuration={2000}
+              awaitAnimation
+              onSuccess={navAfterAnim('/login')}
+            >
+              Sign In
+            </ParticleButton>
           </div>
 
           {/* Stats bar */}
@@ -230,11 +247,15 @@ export default function HomePage() {
             style={{ background: 'linear-gradient(135deg, rgba(43,175,252,0.1) 0%, rgba(85,195,96,0.05) 100%)', border: '1px solid rgba(43,175,252,0.2)' }}>
             <h2 className="font-mono-display font-bold text-3xl mb-4" style={{ color: '#f4f9fd' }}>Ready to start forging?</h2>
             <p className="mb-8" style={{ color: 'rgba(244,249,253,0.6)' }}>Free account. Take your first mock test in 2 minutes.</p>
-            <Link href="/signup" className="inline-block">
-              <ParticleButton variant="primary" className="px-8 py-4 text-sm" successDuration={550}>
-                Create Free Account <ArrowRight size={15} />
-              </ParticleButton>
-            </Link>
+            <ParticleButton
+              variant="primary"
+              className="px-8 py-4 text-sm"
+              successDuration={2000}
+              awaitAnimation
+              onSuccess={navAfterAnim('/signup')}
+            >
+              Create Free Account <ArrowRight size={15} />
+            </ParticleButton>
           </div>
         </div>
       </section>
