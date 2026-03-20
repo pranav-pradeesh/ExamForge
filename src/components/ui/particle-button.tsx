@@ -67,7 +67,7 @@ function ParticleButton({
   children,
   onClick,
   onSuccess,
-  successDuration = 300,
+  successDuration = 100,
   variant = "primary",
   loading = false,
   awaitAnimation: _a,
