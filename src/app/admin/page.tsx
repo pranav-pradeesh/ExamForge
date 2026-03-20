@@ -2,9 +2,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { DashCard } from '@/components/ui/spotlight-card'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts'
 import {
   Shield, Eye, EyeOff, Users, BookOpen, BarChart3, Plus, Trash2,
-  Edit3, X, Check, Upload, FileText, Loader2
+  Edit3, X, Check, Upload, FileText, Loader2, TrendingUp, Flame, GraduationCap
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────
@@ -119,7 +120,11 @@ function AdminPanel() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [mockExams, setMockExams] = useState<MockExam[]>([])
-  const [stats, setStats] = useState({ totalStudents: 0, totalQuestions: 0, avgScore: 0 })
+  const [stats, setStats] = useState({
+    totalStudents: 0, totalQuestions: 0, avgScore: 0,
+    dailySignups: [] as { date: string; count: number }[],
+    examDist: {} as Record<string, number>,
+  })
   const [loading, setLoading] = useState(true)
 
   // Question form state
@@ -144,9 +149,28 @@ function AdminPanel() {
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
-    const [{ data: q }, { data: p }, { data: s }, { data: m }] = await Promise.all([
+    // Load stats via admin API (bypasses RLS for accurate counts)
+    fetch('/api/admin/stats').then(r => r.json()).then(data => {
+      if (!data.error) {
+        setStats({
+          totalStudents: data.totalStudents,
+          totalQuestions: data.totalQuestions,
+          avgScore: data.avgScore,
+          dailySignups: data.dailySignups || [],
+          examDist: data.examDist || {},
+        })
+        setProfiles(data.recentProfiles || [])
+      }
+    }).catch(() => {
+      // Fallback to direct query if service role not set up
+      supabase.from('profiles').select('*').order('created_at', { ascending: false }).then(({ data: p }) => {
+        setProfiles(p || [])
+        setStats(s => ({ ...s, totalStudents: p?.length || 0 }))
+      })
+    })
+
+    const [{ data: q }, { data: s }, { data: m }] = await Promise.all([
       supabase.from('questions').select('*, subjects(name,code)').order('created_at', { ascending: false }).limit(200),
-      supabase.from('profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('subjects').select('*').order('exam_type').order('name'),
       supabase.from('mock_exams').select('*').order('created_at', { ascending: false }),
     ])
@@ -155,10 +179,9 @@ function AdminPanel() {
       ? Math.round(sessions.reduce((a: number, s: { percentage: number }) => a + s.percentage, 0) / sessions.length)
       : 0
     setQuestions((q as Question[]) || [])
-    setProfiles((p as Profile[]) || [])
     setSubjects((s as Subject[]) || [])
     setMockExams((m as MockExam[]) || [])
-    setStats({ totalStudents: p?.length || 0, totalQuestions: q?.length || 0, avgScore })
+    setStats(prev => ({ ...prev, totalQuestions: q?.length || 0, avgScore }))
     setLoading(false)
   }
 
@@ -292,21 +315,93 @@ function AdminPanel() {
             {/* ── OVERVIEW ── */}
             {tab === 'overview' && (
               <div className="space-y-5 animate-in">
-                {/* 3 stats only */}
+                {/* 3 stat cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
-                    { label: 'Total Students',     val: stats.totalStudents,        color: '#2baffc' },
-                    { label: 'Questions in Bank',  val: stats.totalQuestions,       color: '#f59e0b' },
-                    { label: 'Platform Avg Score', val: `${stats.avgScore}%`,       color: '#55c360' },
+                    { label: 'Total Students',     val: stats.totalStudents,  color: '#2baffc', icon: <Users size={16} />,      sub: 'all registered accounts' },
+                    { label: 'Questions in Bank',  val: stats.totalQuestions, color: '#f59e0b', icon: <BookOpen size={16} />,   sub: 'across all exams' },
+                    { label: 'Platform Avg Score', val: `${stats.avgScore}%`, color: '#55c360', icon: <BarChart3 size={16} />,  sub: 'completed test sessions' },
                   ].map(s => (
                     <DashCard key={s.label} glowColor={s.color === '#2baffc' ? 'blue' : s.color === '#f59e0b' ? 'amber' : 'green'} style={{ padding: '20px' }}>
-                      <div className="text-xs mb-2" style={{ color: 'rgba(244,249,253,0.5)' }}>{s.label}</div>
-                      <div className="font-mono-display font-bold text-2xl" style={{ color: s.color }}>{s.val}</div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-xs font-mono-display" style={{ color: 'rgba(244,249,253,0.5)' }}>{s.label}</div>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: s.color + '15', color: s.color }}>{s.icon}</div>
+                      </div>
+                      <div className="font-mono-display font-bold text-3xl mb-1" style={{ color: s.color }}>{s.val}</div>
+                      <div className="text-xs" style={{ color: 'rgba(244,249,253,0.35)' }}>{s.sub}</div>
                     </DashCard>
                   ))}
                 </div>
 
-                {/* Subjects configured — all exams */}
+                {/* Growth chart + Exam distribution */}
+                <div className="grid lg:grid-cols-3 gap-5">
+                  <DashCard glowColor="blue" className="lg:col-span-2" style={{ padding: '20px' }}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <TrendingUp size={13} style={{ color: '#2baffc' }} />
+                      <span className="font-mono-display text-xs font-bold" style={{ color: 'rgba(244,249,253,0.5)' }}>NEW STUDENTS — LAST 30 DAYS</span>
+                    </div>
+                    {stats.dailySignups.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={140}>
+                        <AreaChart data={stats.dailySignups} margin={{ top: 4, right: 4, left: -32, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%"  stopColor="#2baffc" stopOpacity={0.25} />
+                              <stop offset="95%" stopColor="#2baffc" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="date" tick={false} axisLine={false} tickLine={false} />
+                          <YAxis allowDecimals={false} tick={{ fill: 'rgba(244,249,253,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                          <Tooltip
+                            contentStyle={{ background: '#111114', border: '1px solid #1e1e24', borderRadius: 8, fontSize: 12 }}
+                            labelStyle={{ color: 'rgba(244,249,253,0.5)' }}
+                            itemStyle={{ color: '#2baffc' }}
+                            formatter={(v: number) => [v, 'new students']}
+                            labelFormatter={(l: string) => new Date(l).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          />
+                          <Area type="monotone" dataKey="count" stroke="#2baffc" strokeWidth={2} fill="url(#sg)" dot={false} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-36 flex items-center justify-center">
+                        <p className="text-xs" style={{ color: 'rgba(244,249,253,0.3)' }}>Requires SUPABASE_SERVICE_ROLE_KEY env variable</p>
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full" style={{ background: '#2baffc' }} />
+                      <span className="text-xs" style={{ color: 'rgba(244,249,253,0.4)' }}>
+                        {stats.dailySignups.reduce((a, d) => a + d.count, 0)} signups in the last 30 days
+                      </span>
+                    </div>
+                  </DashCard>
+
+                  <DashCard glowColor="blue" style={{ padding: '20px' }}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <GraduationCap size={13} style={{ color: '#55c360' }} />
+                      <span className="font-mono-display text-xs font-bold" style={{ color: 'rgba(244,249,253,0.5)' }}>EXAM SPLIT</span>
+                    </div>
+                    <div className="space-y-2.5">
+                      {ALL_EXAMS.map(ex => {
+                        const count = stats.examDist[ex] || 0
+                        const total = Object.values(stats.examDist).reduce((a, b) => a + b, 0) || 1
+                        const pct = Math.round((count / total) * 100)
+                        const color = EXAM_COLORS[ex]
+                        return (
+                          <div key={ex}>
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="font-mono-display font-bold" style={{ color }}>{ex}</span>
+                              <span style={{ color: 'rgba(244,249,253,0.5)' }}>{count} ({pct}%)</span>
+                            </div>
+                            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#1e1e24' }}>
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </DashCard>
+                </div>
+
+                {/* Subjects configured */}
                 <DashCard glowColor="blue" style={{ padding: '20px' }}>
                   <h3 className="font-mono-display text-sm font-bold mb-4" style={{ color: '#f4f9fd' }}>Subjects Configured</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -330,29 +425,55 @@ function AdminPanel() {
                   </div>
                 </DashCard>
 
-                {/* Recent students */}
-                <DashCard glowColor="blue" style={{ padding: '20px' }}>
-                  <h3 className="font-mono-display text-sm font-bold mb-4" style={{ color: '#f4f9fd' }}>Recent Registrations</h3>
-                  {profiles.slice(0, 6).length === 0 ? (
-                    <p className="text-sm" style={{ color: 'rgba(244,249,253,0.4)' }}>No students yet</p>
+                {/* ALL students list */}
+                <DashCard glowColor="blue" style={{ padding: '0' }}>
+                  <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #1e1e24' }}>
+                    <div className="flex items-center gap-2">
+                      <Users size={13} style={{ color: '#2baffc' }} />
+                      <span className="font-mono-display text-xs font-bold" style={{ color: 'rgba(244,249,253,0.5)' }}>
+                        ALL STUDENTS ({stats.totalStudents})
+                      </span>
+                    </div>
+                    <span className="text-xs" style={{ color: 'rgba(244,249,253,0.35)' }}>latest 50</span>
+                  </div>
+                  {profiles.length === 0 ? (
+                    <div className="text-center py-10">
+                      <Users size={28} className="mx-auto mb-2" style={{ color: 'rgba(244,249,253,0.1)' }} />
+                      <p className="text-sm" style={{ color: 'rgba(244,249,253,0.4)' }}>No students yet</p>
+                    </div>
                   ) : (
-                    <div className="space-y-2">
-                      {profiles.slice(0, 6).map(p => (
-                        <div key={p.id} className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid #1e1e24' }}>
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, #2baffc, #55c360)', color: '#010101' }}>
-                            {p.full_name.charAt(0)}
+                    <div className="divide-y" style={{ borderColor: '#1e1e24' }}>
+                      {profiles.map(p => {
+                        const examColor = EXAM_COLORS[p.target_exam] || '#2baffc'
+                        const daysAgo = Math.floor((Date.now() - new Date(p.created_at).getTime()) / 86400000)
+                        const joinedLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`
+                        return (
+                          <div key={p.id} className="flex items-center gap-3 px-5 py-3 transition-all hover:bg-[#0a0a0b]">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                              style={{ background: examColor + '20', color: examColor, border: `1px solid ${examColor}30` }}>
+                              {p.full_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate" style={{ color: '#f4f9fd' }}>{p.full_name}</div>
+                              <div className="text-xs truncate" style={{ color: 'rgba(244,249,253,0.4)' }}>{p.email}</div>
+                            </div>
+                            <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                              {(p.current_streak || 0) > 0 && (
+                                <span className="text-xs flex items-center gap-0.5" style={{ color: '#f59e0b' }}>
+                                  <Flame size={10} />{p.current_streak}d
+                                </span>
+                              )}
+                              {(p.total_tests_taken || 0) > 0 && (
+                                <span className="text-xs" style={{ color: 'rgba(244,249,253,0.35)' }}>{p.total_tests_taken} tests</span>
+                              )}
+                            </div>
+                            <span className="text-xs font-mono-display px-2 py-0.5 rounded flex-shrink-0"
+                              style={{ background: examColor + '15', color: examColor }}>{p.target_exam}</span>
+                            <span className="text-xs flex-shrink-0 hidden sm:block w-16 text-right"
+                              style={{ color: daysAgo === 0 ? '#55c360' : 'rgba(244,249,253,0.3)' }}>{joinedLabel}</span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm truncate" style={{ color: '#f4f9fd' }}>{p.full_name}</div>
-                            <div className="text-xs truncate" style={{ color: 'rgba(244,249,253,0.4)' }}>{p.email}</div>
-                          </div>
-                          <span className="text-xs font-mono-display px-2 py-0.5 rounded flex-shrink-0"
-                            style={{ background: (EXAM_COLORS[p.target_exam] || '#2baffc') + '15', color: EXAM_COLORS[p.target_exam] || '#2baffc' }}>
-                            {p.target_exam}
-                          </span>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </DashCard>
