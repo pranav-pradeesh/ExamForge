@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { supabase }
+import { DashCard } from '@/components/ui/spotlight-card' from '@/lib/supabase'
 import { scoreColor, formatTime } from '@/lib/utils'
 import { Clock, CheckCircle, XCircle, SkipForward, ChevronRight, BarChart3 } from 'lucide-react'
 
@@ -56,11 +57,11 @@ export default function ResultsPage() {
           ))}
         </div>
       ) : sessions.length === 0 ? (
-        <div className="card text-center py-16" style={{ borderColor: '#1e1e24' }}>
+        <DashCard className="text-center py-16" style={{ borderColor: '#1e1e24' }}>
           <BarChart3 size={40} className="mx-auto mb-4" style={{ color: 'rgba(244,249,253,0.2)' }} />
           <p className="mb-4" style={{ color: 'rgba(244,249,253,0.4)' }}>No completed tests yet</p>
           <Link href="/dashboard/exam" className="btn-primary text-sm py-2 px-6">Take a Mock Test</Link>
-        </div>
+        </DashCard>
       ) : (
         <div className="space-y-3 animate-in stagger-1">
           {sessions.map(s => {
