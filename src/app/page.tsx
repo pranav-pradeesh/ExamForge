@@ -5,6 +5,7 @@ import { ArrowRight, Zap, Target, BarChart3, Brain, CheckCircle, Clock, BookOpen
 import { ParticleButton } from '@/components/ui/particle-button'
 import { GlowCard } from '@/components/ui/spotlight-card'
 import { HandWrittenTitle } from '@/components/ui/hand-writing-text'
+import { GridBackground } from '@/components/ui/glowing-card'
 
 const EXAMS = [
   { code: 'JEE',    name: 'JEE Main & Advanced', body: 'NTA',           color: '#2baffc', duration: '3h / 6h', questions: '75 / 114', subjects: ['Physics','Chemistry','Mathematics'],            pattern: '+4 / -1', note: 'NITs, IIITs & IITs' },
@@ -236,15 +237,15 @@ export default function HomePage() {
 
       {/* ── CTA ── */}
       <section className="py-16 sm:py-20 px-4 sm:px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="rounded-2xl p-8 sm:p-12"
-            style={{ background: 'linear-gradient(135deg, rgba(43,175,252,0.1) 0%, rgba(85,195,96,0.05) 100%)', border: '1px solid rgba(43,175,252,0.2)' }}>
-            <h2 className="font-mono-display font-bold text-2xl sm:text-3xl mb-3" style={{ color: '#f4f9fd' }}>Ready to start forging?</h2>
-            <p className="mb-7 text-sm sm:text-base" style={{ color: 'rgba(244,249,253,0.6)' }}>Free account. Take your first mock test in 2 minutes.</p>
+        <div className="max-w-3xl mx-auto">
+          <GridBackground
+            title="Ready to start forging?"
+            description="Free account. Take your first mock test in 2 minutes."
+          >
             <ParticleButton variant="primary" className="px-8 py-3.5 text-sm" successDuration={1800} onSuccess={navAfterAnim('/signup')}>
               Create Free Account <ArrowRight size={15} />
             </ParticleButton>
-          </div>
+          </GridBackground>
         </div>
       </section>
 
