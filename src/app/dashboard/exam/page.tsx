@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { DashCard } from '@/components/ui/spotlight-card'
 import { Play, Clock, BookOpen, Zap, Filter, ChevronRight, Shuffle } from 'lucide-react'
 
 interface MockExam {
@@ -159,7 +160,7 @@ function ExamPageInner() {
 
       {/* Custom test builder */}
       {showBuilder && (
-        <div className="card animate-in" style={{ borderColor: 'rgba(85,195,96,0.3)' }}>
+        <DashCard className="animate-in" style={{ borderColor: 'rgba(85,195,96,0.3)' }}>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(85,195,96,0.15)', color: '#55c360' }}>
               <Filter size={14} />
@@ -223,7 +224,7 @@ function ExamPageInner() {
             className="btn-emerald flex items-center gap-2 py-3 px-6">
             {buildStarting ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <><Shuffle size={14} /> Start Custom Test</>}
           </button>
-        </div>
+        </DashCard>
       )}
 
       {/* Preset exams */}
