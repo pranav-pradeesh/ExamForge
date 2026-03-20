@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { DashCard } from '@/components/ui/spotlight-card'
 import { Plus, X, CheckSquare, Square, Zap } from 'lucide-react'
 
 interface ChecklistItem {
@@ -88,7 +89,7 @@ export default function ChecklistPage() {
 
       {/* Add form */}
       {showForm && (
-        <div className="card animate-in" style={{ borderColor: 'rgba(43,175,252,0.3)' }}>
+        <DashCard className="animate-in" style={{ borderColor: 'rgba(43,175,252,0.3)' }}>
           <div className="flex items-center justify-between mb-4">
             <span className="font-mono-display text-sm font-bold" style={{ color: '#2baffc' }}>Add Topic</span>
             <button onClick={() => setShowForm(false)} style={{ color: 'rgba(244,249,253,0.4)' }}><X size={16} /></button>
@@ -122,7 +123,7 @@ export default function ChecklistPage() {
             <button onClick={() => setShowForm(false)} className="btn-ghost text-sm py-2 px-4">Cancel</button>
             <button onClick={addItem} disabled={!form.topic} className="btn-primary text-sm py-2 px-4">Add</button>
           </div>
-        </div>
+        </DashCard>
       )}
 
       {/* Filter tabs */}
@@ -146,12 +147,12 @@ export default function ChecklistPage() {
           {[1, 2, 3].map(i => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ background: '#111114' }} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card text-center py-12" style={{ borderColor: '#1e1e24' }}>
+        <DashCard className="text-center py-12" style={{ borderColor: '#1e1e24' }}>
           <CheckSquare size={36} className="mx-auto mb-3" style={{ color: 'rgba(244,249,253,0.2)' }} />
           <p style={{ color: 'rgba(244,249,253,0.4)' }}>
             {filter === 'done' ? 'Nothing completed yet' : 'All caught up! 🎉'}
           </p>
-        </div>
+        </DashCard>
       ) : (
         <div className="space-y-2 animate-in stagger-3">
           {filtered.map(item => (
