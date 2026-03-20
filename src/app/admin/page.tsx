@@ -320,33 +320,38 @@ function AdminPanel() {
             {/* ── OVERVIEW ── */}
             {tab === 'overview' && (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
                     { label: 'Total Students', val: stats.totalStudents, color: '#2baffc' },
-                    { label: 'Tests Completed', val: stats.totalTests, color: '#55c360' },
                     { label: 'Questions in Bank', val: stats.totalQuestions, color: '#f59e0b' },
-                    { label: 'Platform Avg Score', val: `${stats.avgScore}%`, color: '#2baffc' },
+                    { label: 'Platform Avg Score', val: `${stats.avgScore}%`, color: '#55c360' },
                   ].map(s => (
-                    <div key={s.label} className="card" style={{ borderColor: '#1e1e24' }}>
+                    <DashCard key={s.label} glowColor={s.color === '#2baffc' ? 'blue' : s.color === '#f59e0b' ? 'amber' : 'green'} style={{ padding: '20px' }}>
                       <div className="text-xs mb-2" style={{ color: 'rgba(244,249,253,0.5)' }}>{s.label}</div>
                       <div className="font-mono-display font-bold text-2xl" style={{ color: s.color }}>{s.val}</div>
-                    </div>
+                    </DashCard>
                   ))}
                 </div>
                 {/* Subjects overview */}
-                <DashCard style={{ borderColor: '#1e1e24' }}>
+                <DashCard style={{ padding: '20px' }}>
                   <h3 className="font-mono-display text-sm font-bold mb-4" style={{ color: '#f4f9fd' }}>Subjects Configured</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {['JEE', 'VIT'].map(et => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {['JEE', 'VITEEE', 'KEAM', 'CUSAT', 'NEET'].map(et => (
                       <div key={et}>
-                        <div className="text-xs font-mono-display mb-2" style={{ color: '#2baffc' }}>{et}</div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="text-xs font-mono-display mb-2 px-2 py-1 rounded w-fit"
+                          style={{ background: et === 'JEE' ? 'rgba(43,175,252,0.15)' : et === 'VITEEE' ? 'rgba(85,195,96,0.15)' : et === 'KEAM' ? 'rgba(245,158,11,0.15)' : et === 'CUSAT' ? 'rgba(167,139,250,0.15)' : 'rgba(236,72,153,0.15)', color: et === 'JEE' ? '#2baffc' : et === 'VITEEE' ? '#55c360' : et === 'KEAM' ? '#f59e0b' : et === 'CUSAT' ? '#a78bfa' : '#ec4899' }}>
+                          {et}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
                           {subjectsByExam(et).map(s => (
                             <span key={s.id} className="text-xs px-2 py-1 rounded flex items-center gap-1"
                               style={{ background: s.color + '15', color: s.color, border: `1px solid ${s.color}30` }}>
                               {s.icon} {s.name}
                             </span>
                           ))}
+                          {subjectsByExam(et).length === 0 && (
+                            <span className="text-xs" style={{ color: 'rgba(244,249,253,0.3)' }}>Run SQL update first</span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -399,7 +404,7 @@ function AdminPanel() {
                         <div>
                           <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>EXAM TYPE</label>
                           <select className="input-field text-sm" value={qForm.exam_type} onChange={e => { updQ('exam_type', e.target.value); updQ('subject_id', '') }}>
-                            <option>JEE</option><option>VIT</option>
+                            <option>JEE</option><option>VITEEE</option><option>KEAM</option><option>CUSAT</option><option>NEET</option>
                           </select>
                         </div>
                         <div>
@@ -552,7 +557,7 @@ function AdminPanel() {
                     <div>
                       <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>EXAM TYPE</label>
                       <select className="input-field text-sm" value={pdfExamType} onChange={e => setPdfExamType(e.target.value)}>
-                        <option>JEE</option><option>VIT</option>
+                        <option>JEE</option><option>VITEEE</option><option>KEAM</option><option>CUSAT</option><option>NEET</option>
                       </select>
                     </div>
                     <div>
