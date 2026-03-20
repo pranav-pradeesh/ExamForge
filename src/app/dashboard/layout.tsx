@@ -5,16 +5,17 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
   LayoutDashboard, FlaskConical, BarChart3, BookOpen,
-  CheckSquare, LogOut, Menu, X, Zap, ChevronRight, MessageCircle
+  CheckSquare, LogOut, Menu, X, Zap, ChevronRight, MessageCircle, Trophy
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/dashboard',            label: 'Overview',   icon: LayoutDashboard },
-  { href: '/dashboard/exam',       label: 'Tests',      icon: FlaskConical },
-  { href: '/dashboard/results',    label: 'Results',    icon: BarChart3 },
-  { href: '/dashboard/chat',       label: 'AI Tutor',   icon: MessageCircle },
-  { href: '/dashboard/notes',      label: 'Notebook',   icon: BookOpen },
-  { href: '/dashboard/checklist',  label: 'Study Plan', icon: CheckSquare },
+  { href: '/dashboard',              label: 'Overview',    icon: LayoutDashboard },
+  { href: '/dashboard/exam',         label: 'Tests',       icon: FlaskConical },
+  { href: '/dashboard/results',      label: 'Results',     icon: BarChart3 },
+  { href: '/dashboard/leaderboard',  label: 'Leaderboard', icon: Trophy },
+  { href: '/dashboard/chat',         label: 'AI Tutor',    icon: MessageCircle },
+  { href: '/dashboard/notes',        label: 'Notebook',    icon: BookOpen },
+  { href: '/dashboard/checklist',    label: 'Study Plan',  icon: CheckSquare },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
