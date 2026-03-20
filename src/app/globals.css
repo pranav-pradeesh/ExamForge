@@ -240,3 +240,26 @@ img { max-width: 100%; height: auto; }
 
 /* ── Overflow fix for tables on mobile ─────────────────── */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── GridBackground animations ─────────────────────────── */
+@keyframes ef-border-follow {
+  0%   { left: 0%;   top: 0%;    transform: translate(-50%, -50%); }
+  25%  { left: 100%; top: 0%;    transform: translate(-50%, -50%); }
+  50%  { left: 100%; top: 100%;  transform: translate(-50%, -50%); }
+  75%  { left: 0%;   top: 100%;  transform: translate(-50%, -50%); }
+  100% { left: 0%;   top: 0%;    transform: translate(-50%, -50%); }
+}
+
+@keyframes ef-color-change {
+  0%   { color: #2baffc; }
+  33%  { color: #55c360; }
+  66%  { color: #f59e0b; }
+  100% { color: #2baffc; }
+}
+
+@keyframes ef-border-color {
+  0%   { border-color: rgba(43,175,252,0.5);  }
+  33%  { border-color: rgba(85,195,96,0.5);   }
+  66%  { border-color: rgba(245,158,11,0.5);  }
+  100% { border-color: rgba(43,175,252,0.5);  }
+}
