@@ -29,6 +29,29 @@ export default function SignupPage() {
 
   function update(key: string, val: string) { setForm(f => ({ ...f, [key]: val })) }
 
+  async function handleSignupClick(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    const { data, error: signupError } = await supabase.auth.signUp({
+      email: form.email, password: form.password,
+      options: { data: { full_name: form.fullName, target_exam: form.targetExam, vit_stream: form.vitStream } },
+    })
+    if (signupError) { setError(signupError.message); setLoading(false); return }
+    if (data.user) {
+      await supabase.from('profiles').upsert({
+        id: data.user.id, email: form.email, full_name: form.fullName,
+        target_exam: form.targetExam,
+      }, { onConflict: 'id' })
+    }
+    setSuccess(true)
+    // loading stays true — onSuccess fires after animation and navigates
+  }
+
+  function handleSignupSuccess() {
+    router.push('/dashboard')
+  }
+
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setError('')
@@ -166,9 +189,9 @@ export default function SignupPage() {
               loading={loading}
               disabled={!form.fullName || !form.email || !form.password}
               className="w-full py-3 text-sm"
-             
-              successDuration={550}
-              onClick={e => { e.preventDefault(); handleSignup(e as unknown as React.FormEvent) }}
+              successDuration={2000}
+              onClick={handleSignupClick}
+              onSuccess={handleSignupSuccess}
             >
               Create Account — Free
             </ParticleButton>
