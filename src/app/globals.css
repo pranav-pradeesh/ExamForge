@@ -263,3 +263,11 @@ img { max-width: 100%; height: auto; }
   66%  { border-color: rgba(245,158,11,0.5);  }
   100% { border-color: rgba(43,175,252,0.5);  }
 }
+
+/* ── Streak flame flicker ───────────────────────────────── */
+@keyframes flicker {
+  0%, 100% { transform: scale(1) rotate(-2deg); }
+  25%       { transform: scale(1.08) rotate(2deg); }
+  50%       { transform: scale(0.96) rotate(-1deg); }
+  75%       { transform: scale(1.04) rotate(1deg); }
+}
