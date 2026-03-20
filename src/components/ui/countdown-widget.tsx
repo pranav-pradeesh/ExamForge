@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Clock, CalendarDays, Zap } from 'lucide-react'
 import { DashCard } from '@/components/ui/spotlight-card'
+import { supabase } from '@/lib/supabase'
 
 interface ExamDate {
   id: string
@@ -46,20 +47,32 @@ export function CountdownWidget({ targetExam, className }: CountdownWidgetProps)
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
-    import('@/lib/supabase').then(({ supabase }) => {
-      supabase.from('exam_dates')
-        .select('*')
-        .eq('exam_code', targetExam)
-        .order('exam_date')
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            // Auto-select the next upcoming exam
-            const upcoming = data.findIndex(d => getDaysLeft(d.exam_date) > 0)
-            setExamDates(data as ExamDate[])
-            setSelectedIdx(upcoming >= 0 ? upcoming : 0)
+    supabase
+      .from('exam_dates')
+      .select('*')
+      .eq('exam_code', targetExam)
+      .order('exam_date')
+      .then(({ data, error }) => {
+        if (error || !data || data.length === 0) {
+          // Fallback hardcoded dates if table not yet populated
+          const FALLBACK: Record<string, ExamDate[]> = {
+            JEE:    [{ id:'1', exam_code:'JEE',    exam_name:'JEE Main Session 1 2026', exam_date:'2026-01-22' },
+                     { id:'2', exam_code:'JEE',    exam_name:'JEE Main Session 2 2026', exam_date:'2026-04-02' }],
+            VITEEE: [{ id:'3', exam_code:'VITEEE', exam_name:'VITEEE 2026',              exam_date:'2026-04-19' }],
+            KEAM:   [{ id:'4', exam_code:'KEAM',   exam_name:'KEAM 2026',                exam_date:'2026-05-28' }],
+            CUSAT:  [{ id:'5', exam_code:'CUSAT',  exam_name:'CUSAT CAT 2026',           exam_date:'2026-05-09' }],
+            NEET:   [{ id:'6', exam_code:'NEET',   exam_name:'NEET UG 2026',             exam_date:'2026-05-03' }],
           }
-        })
-    })
+          const fallback = FALLBACK[targetExam] || FALLBACK['JEE']
+          const upcoming = fallback.findIndex(d => getDaysLeft(d.exam_date) > 0)
+          setExamDates(fallback)
+          setSelectedIdx(upcoming >= 0 ? upcoming : 0)
+          return
+        }
+        const upcoming = data.findIndex((d: ExamDate) => getDaysLeft(d.exam_date) > 0)
+        setExamDates(data as ExamDate[])
+        setSelectedIdx(upcoming >= 0 ? upcoming : 0)
+      })
     // Live countdown tick every minute
     const interval = setInterval(() => setTick(t => t + 1), 60000)
     return () => clearInterval(interval)
