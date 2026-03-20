@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { DashCard } from '@/components/ui/spotlight-card'
 import {
   Plus, Trash2, Pin, BookOpen, X, Upload, FileText, Loader2,
   Sparkles, HelpCircle, ChevronDown, Copy, Check, Zap, Brain
@@ -224,7 +225,7 @@ export default function NotesPage() {
             </div>
 
             {showForm && (
-              <div className="card space-y-3" style={{ borderColor: 'rgba(43,175,252,0.3)' }}>
+              <DashCard className="space-y-3" style={{ borderColor: 'rgba(43,175,252,0.3)' }}>
                 <input className="input-field text-sm" placeholder="Title..." value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
                 <textarea className="input-field text-sm resize-none" rows={4} placeholder="Write your notes..." value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
                 <input className="input-field text-sm" placeholder="Tags: Integration, Mechanics..." value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} />
@@ -234,7 +235,7 @@ export default function NotesPage() {
                     {saving ? 'Saving...' : 'Save'}
                   </button>
                 </div>
-              </div>
+              </DashCard>
             )}
 
             {loading ? (
@@ -287,7 +288,7 @@ export default function NotesPage() {
           {/* Note viewer */}
           <div className="lg:col-span-2">
             {activeNote ? (
-              <div className="card h-full" style={{ borderColor: '#1e1e24' }}>
+              <DashCard className="h-full" style={{ borderColor: '#1e1e24' }}>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-mono-display font-bold text-lg" style={{ color: '#f4f9fd' }}>{activeNote.title}</h2>
                   <span className="text-xs" style={{ color: 'rgba(244,249,253,0.3)' }}>
@@ -304,14 +305,14 @@ export default function NotesPage() {
                 <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                   <MarkdownRender content={activeNote.content} />
                 </div>
-              </div>
+              </DashCard>
             ) : (
-              <div className="card h-64 flex items-center justify-center" style={{ borderColor: '#1e1e24' }}>
+              <DashCard className="h-64 flex items-center justify-center" style={{ borderColor: '#1e1e24' }}>
                 <div className="text-center">
                   <BookOpen size={40} className="mx-auto mb-3" style={{ color: 'rgba(244,249,253,0.1)' }} />
                   <p style={{ color: 'rgba(244,249,253,0.3)' }}>Select a note to read it</p>
                 </div>
-              </div>
+              </DashCard>
             )}
           </div>
         </div>
@@ -330,7 +331,7 @@ export default function NotesPage() {
           </div>
 
           {/* Input card */}
-          <div className="card space-y-4" style={{ borderColor: '#1e1e24' }}>
+          <DashCard className="space-y-4" style={{ borderColor: '#1e1e24' }}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label className="text-xs font-mono-display block mb-1.5" style={{ color: 'rgba(244,249,253,0.5)' }}>SUBJECT</label>
@@ -390,14 +391,14 @@ Tips:
                 ? <><Loader2 size={14} className="animate-spin" /> Generating with AI...</>
                 : <><Sparkles size={14} /> Generate {GEN_MODES.find(m => m.id === genMode)?.label}</>}
             </button>
-          </div>
+          </DashCard>
 
           {/* Generated content */}
           {(generatedNotes || generatedFlashcards.length > 0 || generatedConcepts.length > 0 || generatedQuestions.length > 0) && (
             <div className="space-y-4">
               {/* Notes / Summary output */}
               {(genMode === 'notes' || genMode === 'summary') && generatedNotes && (
-                <div className="card" style={{ borderColor: 'rgba(43,175,252,0.2)' }}>
+                <DashCard style={{ borderColor: 'rgba(43,175,252,0.2)' }}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Sparkles size={16} style={{ color: '#2baffc' }} />
@@ -417,7 +418,7 @@ Tips:
                   <div className="overflow-auto" style={{ maxHeight: '600px' }}>
                     <MarkdownRender content={generatedNotes} />
                   </div>
-                </div>
+                </DashCard>
               )}
 
               {/* Flashcards */}
